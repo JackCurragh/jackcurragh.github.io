@@ -221,7 +221,7 @@
                 <p>Ribosome moves 3nt per cycle, protecting mRNA</p>
             </div>
             <div class="step clickable" id="step3" data-step="3">
-                <h3>Step 3: Antibiotic Treatment</h3>
+                <h3>Step 3: Add Inhibitor</h3>
                 <p>Translation inhibitor freezes ribosome in place</p>
             </div>
             <div class="step clickable" id="step4" data-step="4">
@@ -240,7 +240,7 @@
             <div class="controls">
                 <div class="control-group">
                     <button id="play-btn" class="play">▶ Start Translation</button>
-                    <button id="drug-btn" class="play" style="display:none;">💊 Add Antibiotic</button>
+                    <button id="drug-btn" class="play" style="display:none;">💊 Add Inhibitor</button>
                     <button id="nuclease-btn" class="play" style="display:none;">✂️ Apply Nuclease</button>
                     <button id="extract-btn" class="play" style="display:none;">🧬 Extract RPF</button>
                     <button id="reset-btn">↻ Reset</button>
@@ -275,6 +275,7 @@
         let manualMode = false;
         let speed = 5;
         let fragmentLength = 28;
+        let lastStepTime = 0;
 
         // Use a sequence without stop codons
         const mRNA = "AUGACUGCUAAGGCUUACGACAAGCAAGCAAGCAAGCAAGCAAGAUGGCUACGUCGAUACGAAGCAAGCUGACAAGCAAGCAAG";
@@ -304,8 +305,9 @@
             const ntWidth = 20;
             const currentRiboPos = frozenRibosomePos !== null ? frozenRibosomePos : ribosomePos;
 
-            // Calculate protected region using same logic as ribosome
-            const rpfStart = Math.round(currentRiboPos - fragmentLength / 2 + pSiteOffset);
+            // Calculate protected region - EXACT SAME LOGIC AS RIBOSOME
+            // The RPF extends ~pSiteOffset nt upstream from P-site
+            const rpfStart = currentRiboPos - pSiteOffset;
             const rpfEnd = rpfStart + fragmentLength;
 
             // Draw mRNA strand (only if not fully digested)
@@ -368,32 +370,35 @@
             const ntWidth = 20;
             const currentRiboPos = frozenRibosomePos !== null ? frozenRibosomePos : ribosomePos;
 
-            // Calculate protected region bounds - ribosome should be centered on RPF
-            // RPF starts at position (currentRiboPos - fragmentLength/2 + pSiteOffset)
-            const rpfStart = currentRiboPos - fragmentLength / 2 + pSiteOffset;
+            // BIOLOGICAL FOUNDATION: Define A, P, E sites first (these are the biological truth)
+            const pSiteX = startX + currentRiboPos * ntWidth;  // P-site at the ribosome position
+            const aSiteX = pSiteX + (3 * ntWidth);              // A-site is 1 codon ahead
+            const eSiteX = pSiteX - (3 * ntWidth);              // E-site is 1 codon behind
+            const siteWidth = 3 * ntWidth;                      // Each site spans one codon (3 nucleotides)
+            const siteHeight = 20;
+
+            // Calculate ribosome center from the P-site
+            const riboCenterX = pSiteX; // Ribosome centered on P-site
+
+            // Calculate protected region based on P-site position
+            // The RPF extends ~pSiteOffset nt upstream from P-site
+            const rpfStart = currentRiboPos - pSiteOffset;
             const protectStart = startX + rpfStart * ntWidth;
             const protectedWidth = fragmentLength * ntWidth;
-            const riboX = protectStart + protectedWidth / 2; // Center ribosome on RPF
 
-            // Ribosome shape - elongated to cover the whole protected region
-            const riboWidth = protectedWidth / 2;
+            // Ribosome shape - covers the full fragment length (28-32 nt)
+            const riboWidth = protectedWidth / 2; // Half the fragment width for radius
             ctx.fillStyle = 'rgba(42, 157, 143, 0.7)';
             ctx.beginPath();
-            ctx.ellipse(riboX, startY - 40, riboWidth, 35, 0, 0, Math.PI * 2);
+            ctx.ellipse(riboCenterX, startY - 40, riboWidth, 35, 0, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = 'rgba(42, 157, 143, 0.9)';
             ctx.beginPath();
-            ctx.ellipse(riboX, startY + 40, riboWidth * 0.9, 30, 0, 0, Math.PI * 2);
+            ctx.ellipse(riboCenterX, startY + 40, riboWidth * 0.9, 30, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // Draw A, P, E sites as rectangles on the ribosome
-            const pSiteX = startX + currentRiboPos * ntWidth;
-            const aSiteX = pSiteX + (3 * ntWidth); // A-site is 1 codon ahead
-            const eSiteX = pSiteX - (3 * ntWidth); // E-site is 1 codon behind
-            const siteWidth = 3 * ntWidth; // Each site spans one codon (3 nucleotides)
-            const siteHeight = 20;
-
             // E-site (exit)
             ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
             ctx.fillRect(eSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
@@ -423,11 +428,11 @@
             ctx.fillStyle = '#fff';
             ctx.fillText('A', aSiteX, startY + 4);
 
-            // Antibiotic indicator (Step 3+)
+            // Inhibitor indicator (Step 3+)
             if (currentStep >= 3 && currentStep < 6) {
                 ctx.fillStyle = '#f4a261';
                 ctx.beginPath();
-                ctx.arc(riboX + riboWidth + 20, startY - 50, 15, 0, Math.PI * 2);
+                ctx.arc(riboCenterX + riboWidth + 20, startY - 50, 15, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#e76f51';
                 ctx.lineWidth = 2;
@@ -436,12 +441,12 @@
                 ctx.fillStyle = '#1d3557';
                 ctx.font = 'bold 10px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Drug', riboX + riboWidth + 20, startY - 70);
+                ctx.fillText('Inhibitor', riboCenterX + riboWidth + 20, startY - 70);
             }
 
             // Nuclease cutting indicators (Step 4-5)
             if (currentStep >= 4 && currentStep < 6) {
-                // Draw nuclease scissors
+                // Draw nuclease scissors at RPF boundaries
                 drawScissors(protectStart - 25, startY);
                 drawScissors(protectStart + protectedWidth + 25, startY);
             }
@@ -458,7 +463,7 @@
                 ctx.fillStyle = '#457b9d';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${fragmentLength}nt RPF`, riboX, startY - 35);
+                ctx.fillText(`${fragmentLength}nt RPF`, riboCenterX, startY - 35);
             }
         }
 
@@ -503,7 +508,7 @@
 
                 // Add step description
                 if (currentStep >= 3) {
-                    ctx.fillText(`Status: ${currentStep === 3 ? 'Frozen by antibiotic' : currentStep === 4 ? 'Nuclease digestion' : currentStep === 5 ? 'RPF isolated' : 'Extracted'}`, startX, 100);
+                    ctx.fillText(`Status: ${currentStep === 3 ? 'Frozen by inhibitor' : currentStep === 4 ? 'Nuclease digestion' : currentStep === 5 ? 'RPF isolated' : 'Extracted'}`, startX, 100);
                 }
             }
         }
@@ -515,16 +520,25 @@
             drawLabels();
         }
 
-        function animate() {
+        function animate(timestamp) {
             if (!isPlaying) return;
 
-            // In step 2 (translation), cycle ribosome position
+            // In step 2 (translation), step ribosome in 3nt blocks (translocation)
             if (currentStep === 2 && frozenRibosomePos === null) {
-                ribosomePos += 0.3 * (speed / 5);
+                // Calculate delay based on speed (slower speed = longer delay)
+                // Speed 1 = 1000ms, Speed 10 = 100ms
+                const delay = 1100 - (speed * 100);
 
-                // Loop back to start when reaching max position
-                if (ribosomePos > maxRibosomePos) {
-                    ribosomePos = minRibosomePos;
+                if (timestamp - lastStepTime >= delay) {
+                    // Move by exactly 3 nucleotides (one codon)
+                    ribosomePos += 3;
+
+                    // Loop back to start when reaching max position
+                    if (ribosomePos > maxRibosomePos) {
+                        ribosomePos = minRibosomePos;
+                    }
+
+                    lastStepTime = timestamp;
                 }
             }
 
@@ -545,7 +559,7 @@
         });
 
         drugBtn.addEventListener('click', () => {
-            // Freeze ribosome and apply antibiotic
+            // Freeze ribosome and apply inhibitor
             frozenRibosomePos = ribosomePos;
             currentStep = 3;
             drugBtn.style.display = 'none';
