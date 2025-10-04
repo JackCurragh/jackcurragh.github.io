@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ribosome Read Periodicity - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #00d9ff;
+        }
+
+        .subtitle {
+            color: #aaa;
+            margin-bottom: 2rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #00d9ff;
+            text-decoration: none;
+            margin-bottom: 2rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .controls {
+            background: #16213e;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: inline-block;
+            margin-right: 2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #00d9ff;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+
+        .value-display {
+            display: inline-block;
+            margin-left: 0.5rem;
+            color: #aaa;
+            font-family: monospace;
+        }
+
+        canvas {
+            background: #0f3460;
+            border-radius: 8px;
+            width: 100%;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+
+        .info {
+            background: #16213e;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #00d9ff;
+        }
+
+        .info h3 {
+            color: #00d9ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .info p {
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .frame-legend {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to Demos</a>
+
+        <h1>Ribosome Read Periodicity</h1>
+        <p class="subtitle">Interactive visualization of 3-nucleotide periodicity in Ribo-Seq data</p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>
+                    Frame 0 Strength: <span class="value-display" id="frame0-value">70</span>
+                </label>
+                <input type="range" id="frame0" min="0" max="100" value="70">
+            </div>
+            <div class="control-group">
+                <label>
+                    Frame 1 Strength: <span class="value-display" id="frame1-value">20</span>
+                </label>
+                <input type="range" id="frame1" min="0" max="100" value="20">
+            </div>
+            <div class="control-group">
+                <label>
+                    Frame 2 Strength: <span class="value-display" id="frame2-value">10</span>
+                </label>
+                <input type="range" id="frame2" min="0" max="100" value="10">
+            </div>
+        </div>
+
+        <canvas id="periodicity-chart"></canvas>
+
+        <div class="info">
+            <h3>What is Read Periodicity?</h3>
+            <p>
+                In ribosome profiling (Ribo-Seq), actively translating ribosomes protect ~28-30nt RNA fragments.
+                Because ribosomes move 3 nucleotides (one codon) at a time, reads show a characteristic
+                <strong>3-nucleotide periodicity</strong> pattern. High-quality Ribo-Seq data shows strong enrichment
+                in one reading frame (typically frame 0), indicating the ribosome's P-site position.
+            </p>
+            <div class="frame-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00d9ff;"></div>
+                    <span>Frame 0 (P-site)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff006e;"></div>
+                    <span>Frame 1</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffbe0b;"></div>
+                    <span>Frame 2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('periodicity-chart');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 400;
+
+        const frame0Input = document.getElementById('frame0');
+        const frame1Input = document.getElementById('frame1');
+        const frame2Input = document.getElementById('frame2');
+
+        const frame0Value = document.getElementById('frame0-value');
+        const frame1Value = document.getElementById('frame1-value');
+        const frame2Value = document.getElementById('frame2-value');
+
+        // Colors for each frame
+        const colors = ['#00d9ff', '#ff006e', '#ffbe0b'];
+
+        function generateData(frame0, frame1, frame2) {
+            const data = [];
+            const positions = 90; // 90 nucleotide positions to show 30 codons
+
+            for (let i = 0; i < positions; i++) {
+                const frame = i % 3;
+                let value = Math.random() * 5; // baseline noise
+
+                if (frame === 0) value += frame0;
+                else if (frame === 1) value += frame1;
+                else if (frame === 2) value += frame2;
+
+                // Add some natural variation
+                value *= (0.8 + Math.random() * 0.4);
+
+                data.push({
+                    position: i,
+                    value: value,
+                    frame: frame
+                });
+            }
+            return data;
+        }
+
+        function drawChart(data) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const padding = 50;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
+
+            // Find max value for scaling
+            const maxValue = Math.max(...data.map(d => d.value));
+
+            // Draw bars
+            const barWidth = chartWidth / data.length;
+            data.forEach((d, i) => {
+                const barHeight = (d.value / maxValue) * chartHeight;
+                const x = padding + i * barWidth;
+                const y = canvas.height - padding - barHeight;
+
+                ctx.fillStyle = colors[d.frame];
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
+            });
+
+            // Draw axes
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, canvas.height - padding);
+            ctx.lineTo(canvas.width - padding, canvas.height - padding);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, canvas.height - padding);
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#eee';
+            ctx.font = '14px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Position along transcript', canvas.width / 2, canvas.height - 10);
+
+            ctx.save();
+            ctx.translate(15, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Read Count', 0, 0);
+            ctx.restore();
+        }
+
+        function update() {
+            const f0 = parseInt(frame0Input.value);
+            const f1 = parseInt(frame1Input.value);
+            const f2 = parseInt(frame2Input.value);
+
+            frame0Value.textContent = f0;
+            frame1Value.textContent = f1;
+            frame2Value.textContent = f2;
+
+            const data = generateData(f0, f1, f2);
+            drawChart(data);
+        }
+
+        frame0Input.addEventListener('input', update);
+        frame1Input.addEventListener('input', update);
+        frame2Input.addEventListener('input', update);
+
+        // Initial draw
+        update();
+
+        // Redraw on window resize
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.offsetWidth;
+            update();
+        });
+    </script>
+</body>
+</html>

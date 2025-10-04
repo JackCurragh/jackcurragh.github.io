@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ribosome Transit Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #fff;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .story-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .story-section h2 {
+            color: #a8dadc;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .story-section p {
+            line-height: 1.8;
+            opacity: 0.95;
+            margin-bottom: 1rem;
+        }
+
+        .step-indicator {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .step.clickable {
+            cursor: pointer;
+        }
+
+        .step.clickable:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .step.active {
+            border-color: #f1faee;
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .step h3 {
+            color: #a8dadc;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .visualization {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #1d3557;
+            font-weight: 600;
+        }
+
+        button {
+            background: #457b9d;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #1d3557;
+        }
+
+        button.play {
+            background: #2a9d8f;
+        }
+
+        button.play:hover {
+            background: #264653;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .value-display {
+            display: inline-block;
+            margin-left: 0.5rem;
+            color: #1d3557;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .insight-box {
+            background: #f1faee;
+            color: #1d3557;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #e63946;
+            margin-top: 1.5rem;
+        }
+
+        .insight-box h4 {
+            color: #e63946;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to Demos</a>
+
+        <h1>🧬 Ribosome Transit: How Ribo-Seq Works</h1>
+
+        <div class="step-indicator">
+            <div class="step active clickable" id="step1" data-step="1">
+                <h3>Step 1: Ribosome Binding</h3>
+                <p>Ribosome scans and binds to start codon</p>
+            </div>
+            <div class="step clickable" id="step2" data-step="2">
+                <h3>Step 2: Elongation</h3>
+                <p>Ribosome moves 3nt per cycle, protecting mRNA</p>
+            </div>
+            <div class="step clickable" id="step3" data-step="3">
+                <h3>Step 3: Antibiotic Treatment</h3>
+                <p>Translation inhibitor freezes ribosome in place</p>
+            </div>
+            <div class="step clickable" id="step4" data-step="4">
+                <h3>Step 4: Nuclease Digestion</h3>
+                <p>Unprotected mRNA is digested away</p>
+            </div>
+            <div class="step clickable" id="step5" data-step="5">
+                <h3>Step 5: RPF Fragment</h3>
+                <p>~28-30nt protected fragment remains</p>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <canvas id="transit-canvas"></canvas>
+
+            <div class="controls">
+                <div class="control-group">
+                    <button id="play-btn" class="play">▶ Start Translation</button>
+                    <button id="drug-btn" class="play" style="display:none;">💊 Add Antibiotic</button>
+                    <button id="nuclease-btn" class="play" style="display:none;">✂️ Apply Nuclease</button>
+                    <button id="extract-btn" class="play" style="display:none;">🧬 Extract RPF</button>
+                    <button id="reset-btn">↻ Reset</button>
+                </div>
+                <div class="control-group">
+                    <label>
+                        Ribosome Speed: <span class="value-display" id="speed-val">Normal</span>
+                    </label>
+                    <input type="range" id="speed" min="1" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <label>
+                        Fragment Length: <span class="value-display" id="fragment-val">28</span> nt
+                    </label>
+                    <input type="range" id="fragment-length" min="26" max="32" value="28">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('transit-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1200;
+        canvas.height = 400;
+
+        let animationId;
+        let currentStep = 1;
+        let ribosomePos = 0;
+        let frozenRibosomePos = null;
+        let isPlaying = false;
+        let manualMode = false;
+        let speed = 5;
+        let fragmentLength = 28;
+
+        // Use a sequence without stop codons
+        const mRNA = "AUGACUGCUAAGGCUUACGACAAGCAAGCAAGCAAGCAAGCAAGAUGGCUACGUCGAUACGAAGCAAGCUGACAAGCAAGCAAG";
+        const codonSize = 3;
+        const pSiteOffset = 12; // nucleotides from 5' end of RPF to P-site
+        const minRibosomePos = 5; // Start position for cycling
+        const maxRibosomePos = mRNA.length - 35; // End position (leave room for fragment)
+
+        const playBtn = document.getElementById('play-btn');
+        const drugBtn = document.getElementById('drug-btn');
+        const nucleaseBtn = document.getElementById('nuclease-btn');
+        const extractBtn = document.getElementById('extract-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const speedInput = document.getElementById('speed');
+        const fragmentInput = document.getElementById('fragment-length');
+        const speedVal = document.getElementById('speed-val');
+        const fragmentVal = document.getElementById('fragment-val');
+
+        function updateSteps() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${currentStep}`).classList.add('active');
+        }
+
+        function drawmRNA() {
+            const startX = 50;
+            const startY = 200;
+            const ntWidth = 20;
+            const currentRiboPos = frozenRibosomePos !== null ? frozenRibosomePos : ribosomePos;
+
+            // Calculate protected region using same logic as ribosome
+            const rpfStart = Math.round(currentRiboPos - fragmentLength / 2 + pSiteOffset);
+            const rpfEnd = rpfStart + fragmentLength;
+
+            // Draw mRNA strand (only if not fully digested)
+            if (currentStep < 4) {
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(startX + mRNA.length * ntWidth, startY);
+                ctx.stroke();
+            } else if (currentStep === 6) {
+                // In step 6, draw RPF strand only
+                ctx.strokeStyle = '#457b9d';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(startX + rpfStart * ntWidth, startY);
+                ctx.lineTo(startX + rpfEnd * ntWidth, startY);
+                ctx.stroke();
+            }
+
+            // Draw nucleotides
+            for (let i = 0; i < mRNA.length; i++) {
+                const x = startX + i * ntWidth;
+
+                // Determine if protected or digested
+                const inProtectedRegion = currentStep >= 3 &&
+                    i >= rpfStart &&
+                    i < rpfEnd;
+
+                // In step 4+, only show protected region
+                if (currentStep >= 4 && !inProtectedRegion) {
+                    continue;
+                }
+
+                ctx.fillStyle = inProtectedRegion ? '#457b9d' : '#ddd';
+                ctx.fillRect(x - 8, startY - 8, 16, 16);
+
+                ctx.fillStyle = inProtectedRegion ? '#fff' : '#666';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(mRNA[i], x, startY + 4);
+
+                // Codon boundaries (only before digestion)
+                if (currentStep < 4 && i % 3 === 2 && i < mRNA.length - 1) {
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 10, startY - 20);
+                    ctx.lineTo(x + 10, startY + 20);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawRibosome() {
+            if (currentStep < 2 || currentStep === 6) return; // Hide ribosome after extraction
+
+            const startX = 50;
+            const startY = 200;
+            const ntWidth = 20;
+            const currentRiboPos = frozenRibosomePos !== null ? frozenRibosomePos : ribosomePos;
+
+            // Calculate protected region bounds - ribosome should be centered on RPF
+            // RPF starts at position (currentRiboPos - fragmentLength/2 + pSiteOffset)
+            const rpfStart = currentRiboPos - fragmentLength / 2 + pSiteOffset;
+            const protectStart = startX + rpfStart * ntWidth;
+            const protectedWidth = fragmentLength * ntWidth;
+            const riboX = protectStart + protectedWidth / 2; // Center ribosome on RPF
+
+            // Ribosome shape - elongated to cover the whole protected region
+            const riboWidth = protectedWidth / 2;
+            ctx.fillStyle = 'rgba(42, 157, 143, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(riboX, startY - 40, riboWidth, 35, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(42, 157, 143, 0.9)';
+            ctx.beginPath();
+            ctx.ellipse(riboX, startY + 40, riboWidth * 0.9, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw A, P, E sites as rectangles on the ribosome
+            const pSiteX = startX + currentRiboPos * ntWidth;
+            const aSiteX = pSiteX + (3 * ntWidth); // A-site is 1 codon ahead
+            const eSiteX = pSiteX - (3 * ntWidth); // E-site is 1 codon behind
+            const siteWidth = 3 * ntWidth; // Each site spans one codon (3 nucleotides)
+            const siteHeight = 20;
+
+            // E-site (exit)
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
+            ctx.fillRect(eSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(eSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('E', eSiteX, startY + 4);
+
+            // P-site (peptidyl)
+            ctx.fillStyle = 'rgba(230, 57, 70, 0.4)';
+            ctx.fillRect(pSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.strokeStyle = '#e63946';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(pSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.fillStyle = '#fff';
+            ctx.fillText('P', pSiteX, startY + 4);
+
+            // A-site (aminoacyl)
+            ctx.fillStyle = 'rgba(42, 157, 143, 0.4)';
+            ctx.fillRect(aSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.strokeStyle = '#2a9d8f';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(aSiteX - siteWidth/2, startY - siteHeight/2, siteWidth, siteHeight);
+            ctx.fillStyle = '#fff';
+            ctx.fillText('A', aSiteX, startY + 4);
+
+            // Antibiotic indicator (Step 3+)
+            if (currentStep >= 3 && currentStep < 6) {
+                ctx.fillStyle = '#f4a261';
+                ctx.beginPath();
+                ctx.arc(riboX + riboWidth + 20, startY - 50, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#e76f51';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#1d3557';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Drug', riboX + riboWidth + 20, startY - 70);
+            }
+
+            // Nuclease cutting indicators (Step 4-5)
+            if (currentStep >= 4 && currentStep < 6) {
+                // Draw nuclease scissors
+                drawScissors(protectStart - 25, startY);
+                drawScissors(protectStart + protectedWidth + 25, startY);
+            }
+
+            // Protected region visualization (Step 5)
+            if (currentStep === 5) {
+                ctx.strokeStyle = '#457b9d';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(protectStart - 10, startY - 25, protectedWidth + 20, 50);
+                ctx.setLineDash([]);
+
+                // Fragment length label
+                ctx.fillStyle = '#457b9d';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${fragmentLength}nt RPF`, riboX, startY - 35);
+            }
+        }
+
+        function drawScissors(x, y) {
+            ctx.strokeStyle = '#e76f51';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - 5, y - 10);
+            ctx.lineTo(x + 5, y + 10);
+            ctx.moveTo(x + 5, y - 10);
+            ctx.lineTo(x - 5, y + 10);
+            ctx.stroke();
+        }
+
+        function drawLabels() {
+            const startX = 50;
+            const startY = 200;
+            const currentRiboPos = frozenRibosomePos !== null ? frozenRibosomePos : ribosomePos;
+
+            if (currentStep === 6) {
+                // Step 6: Extracted RPF only
+                ctx.fillStyle = '#1d3557';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Extracted RPF: ${fragmentLength}nt fragment`, startX, 50);
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(`P-site offset: ${pSiteOffset}nt from 5' end`, startX, 75);
+                ctx.fillText(`This fragment will be sequenced to reveal ribosome position`, startX, 100);
+            } else {
+                // Start codon
+                ctx.fillStyle = '#2a9d8f';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('AUG (start)', startX, startY + 50);
+
+                // Position counter
+                ctx.fillStyle = '#1d3557';
+                ctx.font = 'bold 16px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Ribosome position: ${Math.round(currentRiboPos * 10) / 10} nt`, startX, 50);
+                ctx.fillText(`Current codon: ${Math.floor(currentRiboPos / 3) + 1}`, startX, 75);
+
+                // Add step description
+                if (currentStep >= 3) {
+                    ctx.fillText(`Status: ${currentStep === 3 ? 'Frozen by antibiotic' : currentStep === 4 ? 'Nuclease digestion' : currentStep === 5 ? 'RPF isolated' : 'Extracted'}`, startX, 100);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawmRNA();
+            drawRibosome();
+            drawLabels();
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+
+            // In step 2 (translation), cycle ribosome position
+            if (currentStep === 2 && frozenRibosomePos === null) {
+                ribosomePos += 0.3 * (speed / 5);
+
+                // Loop back to start when reaching max position
+                if (ribosomePos > maxRibosomePos) {
+                    ribosomePos = minRibosomePos;
+                }
+            }
+
+            draw();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (currentStep !== 1) return; // Only works at step 1
+
+            isPlaying = true;
+            currentStep = 2;
+            ribosomePos = minRibosomePos;
+            playBtn.style.display = 'none';
+            drugBtn.style.display = 'inline-block';
+            updateSteps();
+            animate();
+        });
+
+        drugBtn.addEventListener('click', () => {
+            // Freeze ribosome and apply antibiotic
+            frozenRibosomePos = ribosomePos;
+            currentStep = 3;
+            drugBtn.style.display = 'none';
+            nucleaseBtn.style.display = 'inline-block';
+            updateSteps();
+            draw();
+        });
+
+        nucleaseBtn.addEventListener('click', () => {
+            // Apply nuclease
+            currentStep = 4;
+            nucleaseBtn.style.display = 'none';
+            updateSteps();
+            draw();
+
+            // After a brief delay, show final RPF with extract button
+            setTimeout(() => {
+                currentStep = 5;
+                extractBtn.style.display = 'inline-block';
+                updateSteps();
+                draw();
+            }, 1500);
+        });
+
+        extractBtn.addEventListener('click', () => {
+            // Extract RPF - remove ribosome and show only fragment
+            currentStep = 6;
+            extractBtn.style.display = 'none';
+            updateSteps();
+            draw();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            isPlaying = false;
+            manualMode = false;
+            ribosomePos = 0;
+            frozenRibosomePos = null;
+            currentStep = 1;
+            playBtn.style.display = 'inline-block';
+            playBtn.textContent = '▶ Start Translation';
+            drugBtn.style.display = 'none';
+            nucleaseBtn.style.display = 'none';
+            extractBtn.style.display = 'none';
+            if (animationId) cancelAnimationFrame(animationId);
+            updateSteps();
+            draw();
+        });
+
+        // Add click handlers for manual step navigation
+        document.querySelectorAll('.step.clickable').forEach(stepEl => {
+            stepEl.addEventListener('click', () => {
+                const step = parseInt(stepEl.dataset.step);
+                manualMode = true;
+                isPlaying = false;
+                if (animationId) cancelAnimationFrame(animationId);
+                currentStep = step;
+
+                // Set ribosome position and UI based on step
+                if (step === 1) {
+                    ribosomePos = 0;
+                    frozenRibosomePos = null;
+                    playBtn.style.display = 'inline-block';
+                    drugBtn.style.display = 'none';
+                    nucleaseBtn.style.display = 'none';
+                } else if (step === 2) {
+                    ribosomePos = 12;
+                    frozenRibosomePos = null;
+                    playBtn.style.display = 'none';
+                    drugBtn.style.display = 'inline-block';
+                    nucleaseBtn.style.display = 'none';
+                } else if (step === 3) {
+                    if (frozenRibosomePos === null) {
+                        ribosomePos = 12;
+                        frozenRibosomePos = 12;
+                    }
+                    playBtn.style.display = 'none';
+                    drugBtn.style.display = 'none';
+                    nucleaseBtn.style.display = 'inline-block';
+                } else {
+                    // Steps 4-5
+                    if (frozenRibosomePos === null) {
+                        ribosomePos = 12;
+                        frozenRibosomePos = 12;
+                    }
+                    playBtn.style.display = 'none';
+                    drugBtn.style.display = 'none';
+                    nucleaseBtn.style.display = 'none';
+                }
+
+                updateSteps();
+                draw();
+            });
+        });
+
+        speedInput.addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            const labels = ['Very Slow', 'Slow', 'Slow', 'Normal', 'Normal', 'Normal', 'Fast', 'Fast', 'Very Fast', 'Max'];
+            speedVal.textContent = labels[speed - 1];
+        });
+
+        fragmentInput.addEventListener('input', (e) => {
+            fragmentLength = parseInt(e.target.value);
+            fragmentVal.textContent = fragmentLength;
+            draw();
+        });
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
