@@ -1,0 +1,3006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RDG: Ribosome Decision Graph</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #fff;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                max-height: none;
+            }
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .visualization {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .bottom-panels {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rdg-model-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .rdg-model-section h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .translons-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .translons-section h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .products {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .canvas-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .viz-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+
+        .view-mode-selector {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .view-mode-selector label {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .view-mode-selector select {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 2px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: white;
+            color: #1e293b;
+        }
+
+        .sim-controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        canvas {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            cursor: crosshair;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .probability-control {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .translon-card {
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            background: white;
+        }
+
+        .translon-header {
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            transition: background 0.2s;
+        }
+
+        .translon-header:hover {
+            background: #f1f5f9;
+        }
+
+        .translon-info {
+            flex: 1;
+        }
+
+        .translon-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .translon-meta {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .expand-icon {
+            transition: transform 0.2s;
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .translon-details {
+            display: none;
+            padding: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .translon-details.expanded {
+            display: block;
+        }
+
+        .detail-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+            background: #f8fafc;
+            border-radius: 4px;
+            color: #1e293b;
+        }
+
+        .kozak-score {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .kozak-strong {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .kozak-moderate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .kozak-weak {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .translon-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .translon-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            width: auto;
+        }
+
+        .modal-close:hover {
+            color: #1e293b;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .translon-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            border-left: 4px solid;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .translon-summary:hover {
+            background: #f1f5f9;
+        }
+
+        .translon-summary-info {
+            flex: 1;
+        }
+
+        .translon-summary-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .translon-summary-meta {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .probability-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .translon-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .probability-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #667eea;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .remove-btn:hover {
+            background: #dc2626;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .primary-btn {
+            background: #667eea;
+            color: white;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .primary-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .secondary-btn {
+            background: #e0e7ff;
+            color: #667eea;
+            width: 100%;
+        }
+
+        .secondary-btn:hover {
+            background: #c7d2fe;
+        }
+
+        .products {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .product-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .product-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 0.75rem;
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .product-count {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stats {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .hint {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .legend-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .sequence-input {
+            margin-bottom: 1.5rem;
+        }
+
+        .sequence-input label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .sequence-input textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .sequence-input textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .sequence-input small {
+            display: block;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to Demos</a>
+
+        <h1>Ribosome Decision Graph</h1>
+        <p class="subtitle">Visualize how ribosomes choose between alternative translation paths</p>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="visualization">
+                    <div class="viz-controls">
+                        <div class="legend">
+                            <div class="legend-item">
+                                <div class="legend-marker" style="background: #059669;"></div>
+                                <span>ATG Start</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker" style="background: #34d399;"></div>
+                                <span>Near-cognate</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker" style="background: #dc2626;"></div>
+                                <span>Stop Codon</span>
+                            </div>
+                        </div>
+                        <div class="view-mode-selector">
+                            <label for="view-mode">View:</label>
+                            <select id="view-mode">
+                                <option value="tree">Decision Graph</option>
+                                <option value="flux">Ribosome Flux</option>
+                            </select>
+                        </div>
+                        <div class="sim-controls">
+                            <button class="primary-btn" id="start-btn" style="width: auto; margin: 0;">▶ Start</button>
+                            <button class="secondary-btn" id="reset-btn" style="width: auto; margin: 0;">↻ Reset</button>
+                            <button class="secondary-btn" id="export-png-btn" style="width: auto; margin: 0;">📸 PNG</button>
+                            <button class="secondary-btn" id="export-video-btn" style="width: auto; margin: 0;">🎥 Video</button>
+                        </div>
+                        <div class="sim-controls" style="margin-top: 0.5rem;">
+                            <span style="font-size: 0.85rem; color: #64748b; margin-right: 0.5rem;">Speed:</span>
+                            <button class="secondary-btn speed-btn" data-speed="1" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">1x</button>
+                            <button class="secondary-btn speed-btn" data-speed="2" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">2x</button>
+                            <button class="secondary-btn speed-btn" data-speed="5" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">5x</button>
+                            <button class="secondary-btn speed-btn" data-speed="10" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">10x</button>
+                        </div>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="rdg-canvas"></canvas>
+                    </div>
+                    <div class="hint">
+                        💡 Click on start codons (green markers) to add translons
+                    </div>
+                </div>
+
+                <div class="rdg-model-section">
+                    <h2>RDG Model Parameters</h2>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                        Configure probabilistic initiation model
+                    </p>
+                    <div class="control-group">
+                        <div class="probability-control">
+                            <label style="display: flex; align-items: center; margin-bottom: 1rem;">
+                                <input type="checkbox" id="auto-populate" checked style="margin-right: 0.5rem;">
+                                <span style="font-size: 0.9rem; color: #555; font-weight: 600;">Auto-populate translons on load</span>
+                            </label>
+                            <p style="font-size: 0.8rem; color: #999; margin-top: -0.5rem;">Automatically select and add translons based on probabilistic model</p>
+                        </div>
+
+                        <div class="probability-control">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label style="font-size: 0.9rem; color: #555;">Base Initiation (P₀)</label>
+                                <span style="font-weight: bold; color: #667eea;" id="base-p-value">90%</span>
+                            </div>
+                            <input type="range" id="base-p" min="0.1" max="0.99" step="0.01" value="0.9" style="width: 100%;">
+                            <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Baseline probability for ideal AUG in strong Kozak context (for ribosomes that reach it)</p>
+                        </div>
+
+                        <div class="probability-control">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label style="font-size: 0.9rem; color: #555;">Near-cognate Penalty</label>
+                                <span style="font-weight: bold; color: #667eea;" id="near-cognate-value">0.5×</span>
+                            </div>
+                            <input type="range" id="near-cognate" min="0.1" max="1.0" step="0.05" value="0.5" style="width: 100%;">
+                            <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Multiplier for CTG, GTG, TTG, ACG starts (1.0 = no penalty)</p>
+                        </div>
+
+                        <div class="probability-control">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label style="font-size: 0.9rem; color: #555;">Max Translons</label>
+                                <span style="font-weight: bold; color: #667eea;" id="max-translons-value">8</span>
+                            </div>
+                            <input type="range" id="max-translons" min="1" max="15" step="1" value="8" style="width: 100%;">
+                            <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Maximum number of translons to auto-populate</p>
+                        </div>
+
+                        <details style="margin-top: 1rem;">
+                            <summary style="cursor: pointer; font-size: 0.9rem; color: #667eea; font-weight: 600; margin-bottom: 0.5rem;">Advanced Model Parameters</summary>
+
+                            <div style="margin-top: 1rem; padding-left: 1rem; border-left: 3px solid #e2e8f0;">
+                                <div class="probability-control">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.85rem; color: #555;">Distance Decay (d₀)</label>
+                                        <span style="font-weight: bold; color: #667eea; font-size: 0.85rem;" id="distance-d0-value">40 nt</span>
+                                    </div>
+                                    <input type="range" id="distance-d0" min="10" max="100" step="5" value="40" style="width: 100%;">
+                                    <p style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">Distance from 5' cap penalty constant</p>
+                                </div>
+
+                                <div class="probability-control">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.85rem; color: #555;">Downstream GC Bonus</label>
+                                        <span style="font-weight: bold; color: #667eea; font-size: 0.85rem;" id="gc-bonus-value">+0.3</span>
+                                    </div>
+                                    <input type="range" id="gc-bonus" min="0" max="1" step="0.1" value="0.3" style="width: 100%;">
+                                    <p style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">Bonus for high downstream GC (structure slows scanning, increases initiation time)</p>
+                                </div>
+
+                                <div class="probability-control">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.85rem; color: #555;">Reinitiation Base</label>
+                                        <span style="font-weight: bold; color: #667eea; font-size: 0.85rem;" id="reinit-base-value">30%</span>
+                                    </div>
+                                    <input type="range" id="reinit-base" min="0.05" max="0.8" step="0.05" value="0.3" style="width: 100%;">
+                                    <p style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">Base reinitiation probability for short uORFs</p>
+                                </div>
+
+                                <div class="probability-control">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.85rem; color: #555;">ORF Length Decay (L₀)</label>
+                                        <span style="font-weight: bold; color: #667eea; font-size: 0.85rem;" id="length-l0-value">100 nt</span>
+                                    </div>
+                                    <input type="range" id="length-l0" min="30" max="300" step="10" value="100" style="width: 100%;">
+                                    <p style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">ORF length penalty constant (reinitiation)</p>
+                                </div>
+
+                                <div class="probability-control">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.85rem; color: #555;">Spacing Decay (S₀)</label>
+                                        <span style="font-weight: bold; color: #667eea; font-size: 0.85rem;" id="spacing-s0-value">50 nt</span>
+                                    </div>
+                                    <input type="range" id="spacing-s0" min="10" max="150" step="10" value="50" style="width: 100%;">
+                                    <p style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">Intercistronic spacing constant (reinitiation)</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <button class="secondary-btn" id="recalculate-btn" style="width: 100%; margin-top: 1rem;">
+                            🔄 Recalculate Probabilities
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bottom-panels">
+                    <div class="translons-section">
+                        <h2>Translons</h2>
+                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                            Click on start codons in the visualization to add translons
+                        </p>
+                        <div class="control-group" id="translon-controls">
+                            <!-- Dynamically generated translon controls -->
+                        </div>
+                    </div>
+
+                    <div class="products">
+                        <h3 style="color: #333; margin-bottom: 1rem;">Product Tally</h3>
+                        <div id="product-list">
+                            <!-- Dynamically generated products -->
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-row">
+                                <span>Total ribosomes:</span>
+                                <span class="stat-value" id="total-ribosomes">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Completed:</span>
+                                <span class="stat-value" id="completed-ribosomes">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h2>Settings</h2>
+
+                <div class="sequence-input">
+                    <label>Sequence Source</label>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="input_type" value="manual" id="radioManual" checked>
+                                <span>Manual Input</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="input_type" value="symbol" id="radioSymbol">
+                                <span>Gene Symbol (e.g., BRCA1)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="radio" name="input_type" value="transcript" id="radioTranscript">
+                                <span>Transcript ID (e.g., ENST...)</span>
+                            </label>
+                        </div>
+
+                        <div id="ensemblLookup" style="display: none; margin-bottom: 0.75rem;">
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="geneInput" placeholder="e.g., BRCA1 or ENST00000380152"
+                                       style="flex: 1; padding: 0.5rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                                <button id="fetchButton" class="primary-btn" style="width: auto; padding: 0.5rem 1rem; margin: 0;">
+                                    Fetch Sequence
+                                </button>
+                            </div>
+                            <p id="statusMessage" style="margin-top: 0.5rem; font-size: 0.85rem; color: #667eea; min-height: 1.2rem;"></p>
+                        </div>
+                    </div>
+
+                    <label for="sequence">mRNA Sequence</label>
+                    <textarea id="sequence" placeholder="Paste mRNA sequence (AUGC format)">CATTTCTACTTTGCCCGCCCACAGATGTAGTTTTCTCTGCGCGTGTGCGTTTTCCCTCCTCCCCGCCCTCAGGGTCCACGGCCACCATGGCGTATTAGGGGCAGCAGTGCCTGCGGCAGCATTGGCCTTTGCAGCGGCGGCAGCAGCACCAGGCTCTGCAGCGGCAACCCCCAGCGGCTTAAGCCATGGCGCTTCTCACGGCATTCAGCAGCAGCGTTGCTGTAACCGACAAAGACACCTTCGAATTAAGCACATTCCTCGATTCCAGCAAAGCACCGCAACATGACCGAAATGAGCTTCCTGAGCAGCGAGGTGTTGGTGGGGGACTTGATGTCCCCCTTCGACCAGTCGGGTTTGGGGGCTGAAGAAAGCCTAGGTCTCTTAGATGATTACCTGGAGGTGGCCAAGCACTTCAAACCTCATGGGTTCTCCAGCGACAAGGCTAAGGCGGGCTCCTCCGAATGGCTGGCTGTGGATGGGTTGGTCAGTCCCTCCAACAACAGCAAGGAGGATGCCTTCTCCGGGACAGATTGGATGTTGGAGAAAATGGATTTGAAGGAGTTCGACTTGGATGCCCTGTTGGGTATAGATGACCTGGAAACCATGCCAGATGACCTTCTGACCACGTTGGATGACACTTGTGATCTCTTTGCCCCCCTAGTCCAGGAGACTAATAAGCAGCCCCCCCAGACGGTGAACCCAATTGGCCATCTCCCAGAAAGTTTAACAAAACCCGACCAGGTTGCCCCCTTCACCTTCTTACAACCTCTTCCCCTTTCCCCAGGGGTCCTGTCCTCCACTCCAGATCATTCCTTTAGTTTAGAGCTGGGCAGTGAAGTGGATATCACTGAAGGAGATAGGAAGCCAGACTACACTGCTTACGTTGCCATGATCCCTCAGTGCATAAAGGAGGAAGACACCCCTTCAGATAATGATAGTGGCATCTGTATGAGCCCAGAGTCCTATCTGGGGTCTCCTCAGCACAGCCCCTCTACCAGGGGCTCTCCAAATAGGAGCCTCCCATCTCCAGGTGTTCTCTGTGGGTCTGCCCGTCCCAAACCTTACGATCCTCCTGGAGAGAAGATGGTAGCAGCAAAAGTAAAGGGTGAGAAACTGGATAAGAAGCTGAAAAAAATGGAGCAAAACAAGACAGCAGCCACTAGGTACCGCCAGAAGAAGAGGGCGGAGCAGGAGGCTCTTACTGGTGAGTGCAAAGAGCTGGAAAAGAAGAACGAGGCTCTAAAAGAGAGGGCGGATTCCCTGGCCAAGGAGATCCAGTACCTGAAAGATTTGATAGAAGAGGTCCGCAAGGCAAGGGGGAAGAAAAGGGTCCCCTAGTTGAGGATAGTCAGGAGCGTCAATGTGCTTGTACATAGAGTGCTGTAGCTGTGTGTTCCAATAAATTATTTTGTAGGGAAA</textarea>
+                    <small>Click "Load Sequence" after pasting or fetching to visualize start/stop codons</small>
+                </div>
+
+                <button class="primary-btn" id="load-seq-btn">Load Sequence</button>
+
+                <h3 style="margin-top: 2rem; font-size: 1.2rem; color: #333;">Simulation Parameters</h3>
+                <div class="control-group">
+                    <div class="probability-control">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.9rem; color: #555;">Ribosome Loading Rate</label>
+                            <span style="font-weight: bold; color: #667eea;" id="loading-rate-value">1 /sec</span>
+                        </div>
+                        <input type="range" id="loading-rate" min="0.1" max="10" step="0.1" value="1" style="width: 100%;">
+                        <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Ribosomes entering at 5' end per second</p>
+                    </div>
+
+                    <div class="probability-control">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.9rem; color: #555;">Scanning Speed</label>
+                            <span style="font-weight: bold; color: #667eea;" id="scanning-speed-value">100 nt/sec</span>
+                        </div>
+                        <input type="range" id="scanning-speed" min="10" max="200" value="100" style="width: 100%;">
+                        <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Nucleotides scanned per second (real: ~100-145 nt/sec)</p>
+                    </div>
+
+                    <div class="probability-control">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.9rem; color: #555;">Translation Speed</label>
+                            <span style="font-weight: bold; color: #667eea;" id="translation-speed-value">5 aa/sec</span>
+                        </div>
+                        <input type="range" id="translation-speed" min="1" max="20" value="5" style="width: 100%;">
+                        <p style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">Base elongation rate (real: ~3-6 aa/sec, varies by codon)</p>
+                    </div>
+
+                    <div class="probability-control">
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.9rem; color: #555; font-weight: 600;">Collision Handling</label>
+                        </div>
+                        <select id="collision-mode" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 2px solid #ddd; font-size: 0.9rem;">
+                            <option value="queue">Queue - All ribosomes queue when blocked</option>
+                            <option value="falloff">Fall-off - Scanning ribosomes dissociate on collision</option>
+                        </select>
+                        <p style="font-size: 0.8rem; color: #999; margin-top: 0.5rem;">
+                            <strong>Queue:</strong> Scanning & translating ribosomes both queue behind obstacles<br>
+                            <strong>Fall-off:</strong> Scanning ribosomes dissociate, translating ribosomes queue
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Translon Details Modal -->
+    <div class="translon-modal" id="translon-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-title" style="color: #667eea;">Translon Details</div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ensembl API Configuration
+        const ENSEMBL_SERVER = "https://rest.ensembl.org";
+        const SPECIES_NAME = "homo_sapiens";
+
+        // Ensembl API Functions
+        async function lookupCanonicalId(geneSymbol) {
+            const url = `${ENSEMBL_SERVER}/lookup/symbol/${SPECIES_NAME}/${geneSymbol}`;
+            const response = await fetch(url, {
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Gene symbol '${geneSymbol}' not found`);
+            }
+
+            const data = await response.json();
+
+            if (!data.canonical_transcript) {
+                throw new Error(`No canonical transcript found for ${geneSymbol}`);
+            }
+
+            return data.canonical_transcript;
+        }
+
+        async function fetchEnsemblSequence(transcriptId) {
+            // Strip version number if present (e.g., ENST00000380152.8 -> ENST00000380152)
+            const cleanId = transcriptId.split('.')[0];
+
+            const url = `${ENSEMBL_SERVER}/sequence/id/${cleanId}?type=cdna`;
+            const response = await fetch(url, {
+                headers: { "Content-Type": "text/x-fasta" }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Transcript '${cleanId}' not found`);
+            }
+
+            const fasta = await response.text();
+
+            // Strip FASTA header (lines starting with >) and whitespace
+            const sequence = fasta.split('\n')
+                .filter(line => !line.startsWith('>'))
+                .join('')
+                .toUpperCase()
+                .replace(/\s/g, '')
+                .replace(/T/g, 'U'); // Convert DNA to RNA
+
+            return sequence;
+        }
+
+        async function processIdentifier() {
+            const input = document.getElementById('geneInput').value.trim();
+            const isSymbol = document.getElementById('radioSymbol').checked;
+            const isTranscript = document.getElementById('radioTranscript').checked;
+            const statusMsg = document.getElementById('statusMessage');
+            const sequenceArea = document.getElementById('sequence');
+            const fetchBtn = document.getElementById('fetchButton');
+
+            if (!input) {
+                statusMsg.textContent = "Please enter a gene symbol or transcript ID";
+                statusMsg.style.color = '#ef4444';
+                return;
+            }
+
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Fetching...';
+            statusMsg.style.color = '#667eea';
+
+            try {
+                let transcriptId = input;
+
+                if (isSymbol) {
+                    // Step 1: Lookup canonical transcript
+                    statusMsg.textContent = `Looking up gene ${input}...`;
+                    transcriptId = await lookupCanonicalId(input);
+                    statusMsg.textContent = `Found canonical transcript: ${transcriptId}`;
+                }
+
+                // Step 2: Fetch sequence
+                statusMsg.textContent = `Fetching cDNA sequence for ${transcriptId}...`;
+                const sequence = await fetchEnsemblSequence(transcriptId);
+
+                // Trim to first 1000nt for demo (full sequences can be very long)
+                const trimmedSeq = sequence.substring(0, 1000);
+                sequenceArea.value = trimmedSeq;
+
+                statusMsg.textContent = `✓ Sequence loaded (${sequence.length}nt total, showing first 1000nt)`;
+                statusMsg.style.color = '#10b981';
+
+                // Auto-trigger load sequence
+                setTimeout(() => {
+                    document.getElementById('load-seq-btn').click();
+                }, 500);
+
+            } catch (error) {
+                statusMsg.textContent = `Error: ${error.message}`;
+                statusMsg.style.color = '#ef4444';
+                console.error('Ensembl API error:', error);
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = 'Fetch Sequence';
+            }
+        }
+
+        const canvas = document.getElementById('rdg-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+        const FRAME_COLORS = ['#10b981', '#3b82f6', '#f59e0b']; // Frame 0, 1, 2
+        let colorIndex = 0;
+
+        // mRNA sequence (ATF4-206)
+        let sequence = "";
+        const sequenceInput = document.getElementById('sequence');
+
+        // Pre-calculated start codons with their frames and stops
+        let startCodons = [];
+
+        // View mode - must be declared before resizeCanvas
+        let viewMode = 'tree'; // 'tree' or 'flux'
+
+        // Translon definitions
+        let translons = [];
+
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = container.clientWidth;
+            // Ensure valid width with reasonable minimum
+            canvas.width = width > 100 ? Math.min(width - 20, 1200) : 1200;
+
+            // Dynamic height based on view mode and number of translons
+            // Height depends on number of translons
+            // Each translon adds vertical space for branching
+            const branchSpacing = 80;
+            const baseY = 200; // Starting Y position
+            const minHeight = 600;
+            const calculatedHeight = baseY + (translons.length * branchSpacing) + 100; // +100 for bottom padding
+            let height = Math.max(minHeight, calculatedHeight);
+
+            canvas.height = height;
+
+            if (sequence && sequence.length > 0) {
+                drawGraph();
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Translon usage tracking (for flux visualization)
+        let translonUsage = {}; // Count how many ribosomes have initiated at each translon
+
+        function initUsageTracking() {
+            translonUsage = {};
+            translons.forEach(t => translonUsage[t.name] = 0);
+        }
+
+        // View mode select element
+        const viewModeSelect = document.getElementById('view-mode');
+        viewModeSelect.value = 'tree'; // Set dropdown to tree
+        viewModeSelect.addEventListener('change', () => {
+            viewMode = viewModeSelect.value;
+            console.log('View mode changed to:', viewMode);
+            resizeCanvas(); // Resize canvas based on new view mode
+        });
+
+        // Ribosome state
+        let ribosomes = [];
+        let isRunning = false;
+        let simulationSpeed = 1; // Speed multiplier (1x, 2x, 10x, 100x)
+        let ribosomeIdCounter = 0;
+        let productCounts = {};
+        let completedCount = 0;
+
+        // Simulation parameters (scaled from biological rates for visualization)
+        // Real rates: Loading ~0.01 rib/sec, Scanning ~100 nt/sec, Elongation ~5 aa/sec
+        // Scaled 100x for visibility while maintaining relative rates
+
+        const FPS = 60; // Animation frames per second
+        let ribosomeLoadingRate = 1; // Ribosomes per second (real: 0.01, scaled 100x)
+        let scanningSpeed = 100; // Nucleotides per second (real: 100, kept at 1x - already fast)
+        let translationSpeed = 5; // Amino acids per second (real: 5, base rate)
+
+        // Per-codon decoding rates based on ribosome residence times (RRT) from Weinberg et al. 2016
+        // RRT values indicate relative slowness: higher RRT = slower decoding
+        // We convert to speed: speed = baseSpeed / RRT
+        const codonDecodingRates = {
+            // Leucine
+            'UUA': 5/1.07, 'UUG': 5/0.94, 'CUU': 5/1.00, 'CUC': 5/1.89, 'CUA': 5/1.07, 'CUG': 5/0.91,
+            // Serine
+            'UCU': 5/0.94, 'UCC': 5/1.13, 'UCA': 5/1.12, 'UCG': 5/1.43, 'AGU': 5/0.96, 'AGC': 5/0.99,
+            // Arginine
+            'CGU': 5/1.18, 'CGC': 5/1.45, 'CGA': 5/1.45, 'CGG': 5/1.44, 'AGA': 5/1.07, 'AGG': 5/1.59,
+            // Proline
+            'CCU': 5/1.26, 'CCC': 5/1.71, 'CCA': 5/1.38, 'CCG': 5/1.24,
+            // Threonine
+            'ACU': 5/0.91, 'ACC': 5/0.70, 'ACA': 5/1.35, 'ACG': 5/1.15,
+            // Alanine
+            'GCU': 5/0.92, 'GCC': 5/0.99, 'GCA': 5/1.09, 'GCG': 5/1.04,
+            // Glycine
+            'GGU': 5/0.99, 'GGC': 5/1.02, 'GGA': 5/1.56, 'GGG': 5/1.61,
+            // Valine
+            'GUU': 5/0.75, 'GUC': 5/0.75, 'GUA': 5/1.06, 'GUG': 5/1.52,
+            // Isoleucine
+            'AUU': 5/0.99, 'AUC': 5/0.84, 'AUA': 5/1.57,
+            // Phenylalanine
+            'UUU': 5/1.04, 'UUC': 5/0.99,
+            // Tyrosine
+            'UAU': 5/1.09, 'UAC': 5/0.95,
+            // Cysteine
+            'UGU': 5/0.81, 'UGC': 5/1.23,
+            // Tryptophan
+            'UGG': 5/1.53,
+            // Histidine
+            'CAU': 5/1.10, 'CAC': 5/0.94,
+            // Glutamine
+            'CAA': 5/1.21, 'CAG': 5/0.90,
+            // Asparagine
+            'AAU': 5/1.08, 'AAC': 5/0.76,
+            // Lysine
+            'AAA': 5/1.03, 'AAG': 5/0.74,
+            // Aspartate
+            'GAU': 5/0.76, 'GAC': 5/0.90,
+            // Glutamate
+            'GAA': 5/0.99, 'GAG': 5/0.82,
+            // Methionine
+            'AUG': 5/1.09,
+            // Stop codons (not translated but included for completeness)
+            'UAA': 5, 'UAG': 5, 'UGA': 5
+        };
+
+        // Ribosome types
+        const RIBOSOME_STATE = {
+            SCANNING: 'scanning',    // 40S small subunit scanning
+            TRANSLATING: 'translating' // 80S ribosome translating
+        };
+
+        // Ribosome footprints (nucleotides protected)
+        const FOOTPRINT = {
+            SCANNING: 15,    // 40S protects ~15 nt
+            TRANSLATING: 30  // 80S protects ~30 nt
+        };
+
+        // Collision handling mode
+        let collisionMode = 'queue'; // 'queue' or 'falloff'
+
+        // Controls
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const loadingRateSlider = document.getElementById('loading-rate');
+        const scanningSpeedSlider = document.getElementById('scanning-speed');
+        const translationSpeedSlider = document.getElementById('translation-speed');
+        const collisionModeSelect = document.getElementById('collision-mode');
+
+        // Update loading rate (ribosomes per second)
+        loadingRateSlider.addEventListener('input', () => {
+            ribosomeLoadingRate = parseFloat(loadingRateSlider.value);
+            document.getElementById('loading-rate-value').textContent = loadingRateSlider.value + ' /sec';
+        });
+
+        // Update scanning speed (nt per second)
+        scanningSpeedSlider.addEventListener('input', () => {
+            scanningSpeed = parseInt(scanningSpeedSlider.value);
+            document.getElementById('scanning-speed-value').textContent = scanningSpeed + ' nt/sec';
+        });
+
+        // Update translation speed (aa per second)
+        translationSpeedSlider.addEventListener('input', () => {
+            translationSpeed = parseInt(translationSpeedSlider.value);
+            document.getElementById('translation-speed-value').textContent = translationSpeed + ' aa/sec';
+
+            // Update all codon decoding rates to match new default
+            for (const codon in codonDecodingRates) {
+                codonDecodingRates[codon] = translationSpeed;
+            }
+        });
+
+        // Update collision mode
+        collisionModeSelect.addEventListener('change', () => {
+            collisionMode = collisionModeSelect.value;
+            console.log('Collision mode changed to:', collisionMode);
+        });
+
+        // RDG Model parameter controls
+        const autoPopulateCheckbox = document.getElementById('auto-populate');
+        const basePSlider = document.getElementById('base-p');
+        const nearCognateSlider = document.getElementById('near-cognate');
+        const maxTranslonsSlider = document.getElementById('max-translons');
+        const distanceD0Slider = document.getElementById('distance-d0');
+        const gcBonusSlider = document.getElementById('gc-bonus');
+        const reinitBaseSlider = document.getElementById('reinit-base');
+        const lengthL0Slider = document.getElementById('length-l0');
+        const spacingS0Slider = document.getElementById('spacing-s0');
+        const recalculateBtn = document.getElementById('recalculate-btn');
+
+        autoPopulateCheckbox.addEventListener('change', () => {
+            rdgModelParams.autoPopulate = autoPopulateCheckbox.checked;
+        });
+
+        basePSlider.addEventListener('input', () => {
+            rdgModelParams.baseP = parseFloat(basePSlider.value);
+            document.getElementById('base-p-value').textContent = (rdgModelParams.baseP * 100).toFixed(0) + '%';
+        });
+
+        nearCognateSlider.addEventListener('input', () => {
+            rdgModelParams.nearCognatePenalty = parseFloat(nearCognateSlider.value);
+            document.getElementById('near-cognate-value').textContent = rdgModelParams.nearCognatePenalty.toFixed(2) + '×';
+        });
+
+        maxTranslonsSlider.addEventListener('input', () => {
+            rdgModelParams.maxTranslons = parseInt(maxTranslonsSlider.value);
+            document.getElementById('max-translons-value').textContent = rdgModelParams.maxTranslons;
+        });
+
+        distanceD0Slider.addEventListener('input', () => {
+            rdgModelParams.distanceD0 = parseInt(distanceD0Slider.value);
+            document.getElementById('distance-d0-value').textContent = rdgModelParams.distanceD0 + ' nt';
+        });
+
+        gcBonusSlider.addEventListener('input', () => {
+            rdgModelParams.gcBonus = parseFloat(gcBonusSlider.value);
+            document.getElementById('gc-bonus-value').textContent = '+' + rdgModelParams.gcBonus.toFixed(1);
+        });
+
+        reinitBaseSlider.addEventListener('input', () => {
+            rdgModelParams.reinitiationBase = parseFloat(reinitBaseSlider.value);
+            document.getElementById('reinit-base-value').textContent = (rdgModelParams.reinitiationBase * 100).toFixed(0) + '%';
+        });
+
+        lengthL0Slider.addEventListener('input', () => {
+            rdgModelParams.lengthL0 = parseInt(lengthL0Slider.value);
+            document.getElementById('length-l0-value').textContent = rdgModelParams.lengthL0 + ' nt';
+        });
+
+        spacingS0Slider.addEventListener('input', () => {
+            rdgModelParams.spacingS0 = parseInt(spacingS0Slider.value);
+            document.getElementById('spacing-s0-value').textContent = rdgModelParams.spacingS0 + ' nt';
+        });
+
+        recalculateBtn.addEventListener('click', () => {
+            recalculateTranslonProbabilities();
+            recalculateBtn.textContent = '✓ Recalculated';
+            setTimeout(() => {
+                recalculateBtn.textContent = '🔄 Recalculate Probabilities';
+            }, 2000);
+        });
+
+        // Convert nucleotide index to pixel position
+        function ntToPixel(ntIndex) {
+            const margin = 50;
+            const canvasWidth = canvas.width - (margin * 2);
+            return margin + (ntIndex / sequence.length) * canvasWidth;
+        }
+
+        // Convert pixel position to nucleotide index
+        function pixelToNt(pixelX) {
+            const margin = 50;
+            const canvasWidth = canvas.width - (margin * 2);
+            return Math.floor(((pixelX - margin) / canvasWidth) * sequence.length);
+        }
+
+        // Find next stop codon in frame from start position
+        function findStopCodon(seq, startNtIndex) {
+            const stopCodons = ['UAA', 'UAG', 'UGA'];
+
+            // Search for stop codon in steps of 3 from start position
+            for (let i = startNtIndex; i + 2 < seq.length; i += 3) {
+                const codon = seq.substring(i, i + 3).toUpperCase();
+                if (stopCodons.includes(codon)) {
+                    return i + 3; // Return nucleotide index after stop codon (inclusive)
+                }
+            }
+
+            // No stop codon found, return end of sequence
+            return seq.length;
+        }
+
+        // Update sequence
+        function updateSequence() {
+            let inputSeq = sequenceInput.value.toUpperCase().replace(/\s+/g, '').replace(/[^ATUGC]/g, '');
+
+            // Convert T to U if DNA sequence provided
+            inputSeq = inputSeq.replace(/T/g, 'U');
+
+            sequence = inputSeq;
+            sequenceInput.value = sequence;
+
+            // Debug: show first 100 nt and check for starts
+            console.log('\n=== SEQUENCE PROCESSING ===');
+            console.log('First 100nt after conversion:', sequence.substring(0, 100));
+
+            // Manually search for AUG and stop codons
+            const augPositions = [];
+            const stopPositions = [];
+            for (let i = 0; i < Math.min(200, sequence.length - 2); i++) {
+                const codon = sequence.substring(i, i + 3);
+                if (codon === 'AUG') augPositions.push(i);
+                if (['UAA', 'UAG', 'UGA'].includes(codon)) stopPositions.push(`${codon}@${i}`);
+            }
+            console.log('AUG positions in first 200nt:', augPositions);
+            console.log('Stop codons in first 200nt:', stopPositions);
+
+            // Recalculate all translon endpoints (convert from nt to pixel)
+            translons.forEach(t => {
+                const endNt = findStopCodon(sequence, t.startNt);
+                t.endNt = endNt;
+                t.start = ntToPixel(t.startNt);
+                t.end = ntToPixel(t.endNt);
+            });
+            drawGraph();
+        }
+
+        // Calculate start codons with frames and stop positions
+        function calculateStartCodons() {
+            startCodons = [];
+            const stopCodons = ['UAA', 'UAG', 'UGA'];
+            const nearCognates = ['CUG', 'GUG', 'ACG', 'AUU', 'AUA', 'AUC'];
+
+            for (let i = 0; i < sequence.length - 2; i++) {
+                const codon = sequence.substring(i, i + 3);
+
+                if (codon === 'AUG' || nearCognates.includes(codon)) {
+                    const frame = i % 3;
+
+                    // Find in-frame stop codon - detailed logging
+                    let stopPos = sequence.length;
+                    let foundStop = false;
+
+                    console.log(`\n>>> Searching for stop from ${codon} at position ${i} (frame ${frame})`);
+
+                    for (let j = i + 3; j + 2 < sequence.length; j += 3) {
+                        const checkCodon = sequence.substring(j, j + 3);
+
+                        // Log first 5 codons checked
+                        if (j < i + 18) {
+                            console.log(`  Position ${j}: ${checkCodon} ${stopCodons.includes(checkCodon) ? '← STOP!' : ''}`);
+                        }
+
+                        if (stopCodons.includes(checkCodon)) {
+                            stopPos = j + 3; // Include the stop codon
+                            foundStop = true;
+                            console.log(`  ✓ Found ${checkCodon} at position ${j}, stopPos = ${stopPos}`);
+                            break;
+                        }
+                    }
+
+                    if (!foundStop) {
+                        console.log(`  ✗ No stop found, using end of sequence: ${stopPos}`);
+                    }
+
+                    startCodons.push({
+                        pos: i,
+                        codon: codon,
+                        frame: frame,
+                        stopPos: stopPos,
+                        isAUG: codon === 'AUG'
+                    });
+
+                    // Only log first 3 starts in detail
+                    if (startCodons.length > 3) break;
+                }
+            }
+
+            // Continue without logging for remaining starts
+            for (let i = 0; i < sequence.length - 2; i++) {
+                const codon = sequence.substring(i, i + 3);
+
+                if ((codon === 'AUG' || nearCognates.includes(codon)) && !startCodons.find(s => s.pos === i)) {
+                    const frame = i % 3;
+                    let stopPos = sequence.length;
+
+                    for (let j = i + 3; j + 2 < sequence.length; j += 3) {
+                        const stopCodon = sequence.substring(j, j + 3);
+                        if (stopCodons.includes(stopCodon)) {
+                            stopPos = j + 3;
+                            break;
+                        }
+                    }
+
+                    startCodons.push({
+                        pos: i,
+                        codon: codon,
+                        frame: frame,
+                        stopPos: stopPos,
+                        isAUG: codon === 'AUG'
+                    });
+                }
+            }
+
+            console.log('\n=== Summary ===');
+            console.log('Calculated', startCodons.length, 'start sites');
+            console.log('Frame 0:', startCodons.filter(s => s.frame === 0).length);
+            console.log('Frame 1:', startCodons.filter(s => s.frame === 1).length);
+            console.log('Frame 2:', startCodons.filter(s => s.frame === 2).length);
+
+            // Log first few with their stops for debugging
+            console.log('\nFirst 10 starts:');
+            startCodons.slice(0, 10).forEach(s => {
+                const stopCodon = sequence.substring(s.stopPos - 3, s.stopPos);
+                console.log(`  ${s.codon} at ${s.pos} (frame ${s.frame}) -> ${stopCodon} at ${s.stopPos} (length: ${s.stopPos - s.pos}nt)`);
+            });
+        }
+
+        // Load sequence button
+        const loadSeqBtn = document.getElementById('load-seq-btn');
+        loadSeqBtn.addEventListener('click', () => {
+            console.log('Load Sequence clicked!');
+
+            // Clear existing translons when loading new sequence
+            translons = [];
+            colorIndex = 0;
+
+            updateSequence();
+            calculateStartCodons();
+
+            // Auto-populate translons if enabled
+            autoPopulateTranslons();
+
+            initProductCounts();
+            initUsageTracking();
+            renderControls();
+            renderProducts();
+
+            console.log('Sequence loaded:', sequence.length, 'nucleotides');
+            console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+
+            const augCount = startCodons.filter(s => s.isAUG).length;
+            const nearCognateCount = startCodons.filter(s => !s.isAUG).length;
+            console.log('Found', augCount, 'AUG start codons');
+            console.log('Found', nearCognateCount, 'near-cognate start codons');
+
+            // Resize and draw
+            resizeCanvas();
+
+            // Visual feedback
+            const msg = translons.length > 0
+                ? `✓ Loaded (${translons.length} translons auto-populated)`
+                : `✓ Loaded (${augCount} starts)`;
+            loadSeqBtn.textContent = msg;
+            setTimeout(() => {
+                loadSeqBtn.textContent = 'Load Sequence';
+            }, 3000);
+        });
+
+        // Initialize with ATF4 sequence on load
+        setTimeout(() => {
+            loadSeqBtn.click();
+        }, 100);
+
+        // Initialize product counts
+        function initProductCounts() {
+            productCounts = {};
+            translons.forEach(t => productCounts[t.name] = 0);
+
+            // Create entries for all possible dual products
+            const sortedTranslons = [...translons].sort((a, b) => a.startNt - b.startNt);
+            for (let i = 0; i < sortedTranslons.length; i++) {
+                for (let j = i + 1; j < sortedTranslons.length; j++) {
+                    const key = `${sortedTranslons[i].name}+${sortedTranslons[j].name}`;
+                    productCounts[key] = 0;
+                }
+            }
+        }
+
+        initProductCounts();
+
+        // Calculate Kozak context score
+        function analyzeKozak(seq, startPos) {
+            // Kozak consensus: gcc(A/G)ccAUGG
+            // Positions: -6 to +4 relative to A of AUG
+            const context = seq.substring(Math.max(0, startPos - 6), startPos + 6);
+
+            let score = 0;
+            let strength = 'weak';
+
+            // Check key positions
+            if (startPos >= 3 && seq[startPos - 3] === 'G') score += 2; // -3 position (most important)
+            if (startPos >= 3 && (seq[startPos - 3] === 'A' || seq[startPos - 3] === 'G')) score += 1;
+            if (startPos + 3 < seq.length && seq[startPos + 3] === 'G') score += 2; // +4 position (important)
+
+            if (score >= 4) strength = 'strong';
+            else if (score >= 2) strength = 'moderate';
+
+            // Normalized score 0-1 for probability calculations
+            const normalizedScore = score / 5.0; // Max possible is 5 (G at -3 gets 2, A/G check adds 1, G at +4 adds 2)
+
+            return { context, score, strength, normalized: normalizedScore };
+        }
+
+        // Calculate downstream GC content as proxy for RNA secondary structure
+        // High GC downstream slows scanning, giving more time for initiation
+        function calculateDownstreamGC(seq, startPos, windowSize = 30) {
+            // Look DOWNSTREAM from the start codon (after position + 3)
+            const windowStart = startPos + 3;
+            const windowEnd = Math.min(seq.length, windowStart + windowSize);
+            const window = seq.substring(windowStart, windowEnd);
+
+            let gcCount = 0;
+            for (let i = 0; i < window.length; i++) {
+                if (window[i] === 'G' || window[i] === 'C') gcCount++;
+            }
+
+            return window.length > 0 ? gcCount / window.length : 0.5;
+        }
+
+        // RDG Model Parameters for probabilistic initiation
+        let rdgModelParams = {
+            baseP: 0.9,              // Base initiation probability for ideal AUG (90%)
+            nearCognatePenalty: 0.5, // Multiplier for near-cognate starts (CTG, GTG, TTG, ACG)
+            distanceD0: 40,          // Distance decay constant for auto-population ranking
+            gcBonus: 0.3,            // Bonus for high downstream GC (structure that slows scanning)
+            reinitiationBase: 0.3,   // Base reinitiation rate
+            lengthL0: 100,           // uORF length decay constant
+            spacingS0: 50,           // Intercistronic spacing decay constant
+            autoPopulate: true,      // Auto-populate translons on load
+            maxTranslons: 8          // Max translons to auto-populate
+        };
+
+        // Calculate initiation probability based on sequence context
+        // Note: Distance is NOT used here - only for auto-population ranking
+        // We calculate probability from the perspective of ribosomes that REACH this position
+        function calculateInitiationProbability(startCodon, kozakScore, gcContent) {
+            const params = rdgModelParams;
+
+            // f_kozak: Kozak context factor (0.5 to 1.0)
+            const fKozak = 0.5 + (kozakScore * 0.5);
+
+            // f_codon: Start codon identity (1.0 for AUG, penalty for near-cognates)
+            const isAUG = startCodon === 'AUG';
+            const fCodon = isAUG ? 1.0 : params.nearCognatePenalty;
+
+            // f_structure: Bonus for high downstream GC (structure slows scanning, increases initiation)
+            // GC > 0.6 gives a bonus, GC < 0.6 is neutral
+            const fStructure = 1.0 + (Math.max(0, gcContent - 0.5) * params.gcBonus);
+
+            // Combined probability
+            const pStart = params.baseP * fKozak * fCodon * fStructure;
+
+            return Math.max(0.01, Math.min(0.99, pStart)); // Clamp between 1% and 99%
+        }
+
+        // Calculate reinitiation probability based on ORF characteristics
+        function calculateReinitiationProbability(orfLength, spacingToNext) {
+            const params = rdgModelParams;
+
+            // f_length: Shorter uORFs have higher reinitiation
+            const fLength = Math.exp(-orfLength / params.lengthL0);
+
+            // f_spacing: Shorter spacing reduces reinitiation efficiency
+            const fSpacing = spacingToNext > 0 ? (1.0 - Math.exp(-spacingToNext / params.spacingS0)) : 0.5;
+
+            const pReinit = params.reinitiationBase * fLength * fSpacing;
+
+            return Math.max(0.05, Math.min(0.9, pReinit)); // Clamp between 5% and 90%
+        }
+
+        // Auto-populate translons based on RDG model
+        function autoPopulateTranslons() {
+            if (!rdgModelParams.autoPopulate || startCodons.length === 0) {
+                return;
+            }
+
+            console.log('Auto-populating translons with RDG model...');
+
+            // Score all start codons
+            const candidates = startCodons.map(sc => {
+                const startCodon = sequence.substring(sc.pos, sc.pos + 3);
+                const kozak = analyzeKozak(sequence, sc.pos);
+                const gcContent = calculateDownstreamGC(sequence, sc.pos);
+                const distanceFromCap = sc.pos;
+
+                // Calculate initiation probability (intrinsic to the site)
+                const initProb = calculateInitiationProbability(
+                    startCodon,
+                    kozak.normalized,
+                    gcContent
+                );
+
+                // Calculate selection score for auto-population
+                // Distance factor: prefer starts closer to 5' cap
+                const distanceFactor = 1.0 - Math.exp(-distanceFromCap / rdgModelParams.distanceD0);
+                const selectionScore = initProb * distanceFactor;
+
+                return {
+                    ...sc,
+                    startCodon,
+                    kozak,
+                    gcContent,
+                    distanceFromCap,
+                    initProb,
+                    selectionScore
+                };
+            });
+
+            // Sort by selection score (initProb × distance factor)
+            candidates.sort((a, b) => b.selectionScore - a.selectionScore);
+
+            // Select top candidates
+            const selected = candidates.slice(0, rdgModelParams.maxTranslons);
+
+            // Sort selected by position (5' to 3')
+            selected.sort((a, b) => a.pos - b.pos);
+
+            // Create translons
+            selected.forEach((candidate, index) => {
+                const orfLength = candidate.stopPos - candidate.pos;
+
+                // Calculate spacing to next translon
+                let spacingToNext = 0;
+                if (index < selected.length - 1) {
+                    spacingToNext = selected[index + 1].pos - candidate.stopPos;
+                }
+
+                const reinitProb = calculateReinitiationProbability(orfLength, spacingToNext);
+
+                translons.push({
+                    name: `Translon ${index + 1}`,
+                    displayName: null, // Custom user-provided name
+                    frame: candidate.frame,
+                    startNt: candidate.pos,
+                    endNt: candidate.stopPos,
+                    start: ntToPixel(candidate.pos),
+                    end: ntToPixel(candidate.stopPos),
+                    color: FRAME_COLORS[candidate.frame], // Color by frame
+                    y: 170 + (index * 80),
+                    initiationRate: candidate.initProb,
+                    reinitiationRate: reinitProb,
+                    // Store metadata for display
+                    metadata: {
+                        startCodon: candidate.startCodon,
+                        kozakStrength: candidate.kozak.strength,
+                        kozakScore: candidate.kozak.normalized,
+                        kozakContext: candidate.kozak.context,
+                        gcContent: candidate.gcContent,
+                        distanceFromCap: candidate.distanceFromCap,
+                        orfLength: orfLength,
+                        spacingToNext: spacingToNext
+                    }
+                });
+            });
+
+            console.log(`Auto-populated ${translons.length} translons`);
+            translons.forEach(t => {
+                console.log(`  ${t.name}: ${t.metadata.startCodon} at ${t.startNt}, ` +
+                    `Kozak=${t.metadata.kozakStrength}, ` +
+                    `pInit=${(t.initiationRate * 100).toFixed(1)}%, ` +
+                    `pReinit=${(t.reinitiationRate * 100).toFixed(1)}%`);
+            });
+        }
+
+        // Recalculate probabilities for all existing translons
+        function recalculateTranslonProbabilities() {
+            if (translons.length === 0) return;
+
+            translons.forEach((translon, index) => {
+                const startCodon = sequence.substring(translon.startNt, translon.startNt + 3);
+                const kozak = analyzeKozak(sequence, translon.startNt);
+                const gcContent = calculateDownstreamGC(sequence, translon.startNt);
+
+                const initProb = calculateInitiationProbability(
+                    startCodon,
+                    kozak.normalized,
+                    gcContent
+                );
+
+                const orfLength = translon.endNt - translon.startNt;
+                let spacingToNext = 0;
+                if (index < translons.length - 1) {
+                    spacingToNext = translons[index + 1].startNt - translon.endNt;
+                }
+
+                const reinitProb = calculateReinitiationProbability(orfLength, spacingToNext);
+
+                translon.initiationRate = initProb;
+                translon.reinitiationRate = reinitProb;
+
+                // Update metadata
+                if (!translon.metadata) translon.metadata = {};
+                translon.metadata.startCodon = startCodon;
+                translon.metadata.kozakStrength = kozak.strength;
+                translon.metadata.kozakScore = kozak.normalized;
+                translon.metadata.kozakContext = kozak.context;
+                translon.metadata.gcContent = gcContent;
+                translon.metadata.distanceFromCap = distanceFromCap;
+                translon.metadata.orfLength = orfLength;
+                translon.metadata.spacingToNext = spacingToNext;
+            });
+
+            console.log('Recalculated probabilities for all translons');
+            renderControls(); // Update UI
+        }
+
+        // Render translon controls (compact summary)
+        function renderControls() {
+            const container = document.getElementById('translon-controls');
+            container.innerHTML = '';
+
+            if (translons.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-style: italic;">No translons added yet</p>';
+                return;
+            }
+
+            translons.forEach((translon, index) => {
+                const startCodon = sequence.substring(translon.startNt, translon.startNt + 3);
+
+                const summary = document.createElement('div');
+                summary.className = 'translon-summary';
+                summary.style.borderLeftColor = translon.color;
+                summary.onclick = () => showTranslonModal(index);
+
+                const displayName = translon.displayName || translon.name;
+                summary.innerHTML = `
+                    <div class="translon-summary-info">
+                        <div class="translon-summary-name" style="color: ${translon.color};">${displayName}</div>
+                        <div class="translon-summary-meta">${startCodon} • Frame ${translon.frame} • ${translon.startNt}-${translon.endNt} nt</div>
+                    </div>
+                    ${translons.length > 1 ? `<button class="remove-btn" onclick="event.stopPropagation(); removeTranslon(${index});" style="position: static;">×</button>` : ''}
+                `;
+                container.appendChild(summary);
+            });
+        }
+
+        // Show translon details modal
+        function showTranslonModal(index) {
+            const translon = translons[index];
+            const startCodon = sequence.substring(translon.startNt, translon.startNt + 3);
+            const kozak = analyzeKozak(sequence, translon.startNt);
+            const upstreamContext = sequence.substring(Math.max(0, translon.startNt - 10), translon.startNt);
+            const downstreamContext = sequence.substring(translon.startNt + 3, Math.min(sequence.length, translon.startNt + 13));
+
+            // Calculate scoring factors
+            const gcContent = calculateDownstreamGC(sequence, translon.startNt);
+            const fKozak = 0.5 + (kozak.normalized * 0.5);
+            const isAUG = startCodon === 'AUG';
+            const fCodon = isAUG ? 1.0 : rdgModelParams.nearCognatePenalty;
+            // f_structure: Bonus for high downstream GC (structure slows scanning, increases initiation)
+            const fStructure = 1.0 + (Math.max(0, gcContent - 0.5) * rdgModelParams.gcBonus);
+
+            // Reinitiation factors
+            const orfLength = translon.endNt - translon.startNt;
+            const spacingToNext = translon.metadata?.spacingToNext || 0;
+            const fLength = Math.exp(-orfLength / rdgModelParams.lengthL0);
+            const fSpacing = spacingToNext > 0 ? (1.0 - Math.exp(-spacingToNext / rdgModelParams.spacingS0)) : 0.5;
+
+            document.getElementById('modal-title').textContent = translon.name;
+            document.getElementById('modal-title').style.color = translon.color;
+
+            document.getElementById('modal-body').innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-label">Custom Name</div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text"
+                               id="translon-custom-name-${index}"
+                               placeholder="${translon.name}"
+                               value="${translon.displayName || ''}"
+                               style="flex: 1; padding: 0.5rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;"
+                               onkeypress="if(event.key === 'Enter') updateTranslonName(${index})">
+                        <button onclick="updateTranslonName(${index})"
+                                style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                            Update
+                        </button>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Leave blank to use default: ${translon.name}</p>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Position & Frame</div>
+                    <div class="detail-value">
+                        <strong>Start:</strong> ${translon.startNt} nt (${startCodon})<br>
+                        <strong>Stop:</strong> ${translon.endNt} nt<br>
+                        <strong>Frame:</strong> ${translon.frame}<br>
+                        <strong>Length:</strong> ${orfLength} nt (${Math.floor(orfLength / 3)} codons)
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Sequence Context</div>
+                    <div class="detail-value">
+                        <span style="color: #94a3b8;">${upstreamContext}</span><span style="color: ${translon.color}; font-weight: bold;">${startCodon}</span><span style="color: #94a3b8;">${downstreamContext}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-label">Kozak Sequence</div>
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <div class="detail-value" style="flex: 1; font-family: monospace;">${kozak.context}</div>
+                        <span class="kozak-score kozak-${kozak.strength}">${kozak.strength.toUpperCase()}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section" style="background: #f8fafc; padding: 1rem; border-radius: 6px;">
+                    <div class="detail-label" style="margin-bottom: 0.75rem;">Initiation Probability Scoring</div>
+                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem; font-style: italic;">
+                        Calculated for ribosomes that reach this position
+                    </p>
+                    <div style="font-size: 0.85rem; line-height: 1.6;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">Base P₀:</span>
+                            <span style="font-weight: 600;">${(rdgModelParams.baseP * 100).toFixed(0)}%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">× Kozak factor (f<sub>kozak</sub>):</span>
+                            <span style="font-weight: 600; color: ${fKozak >= 0.75 ? '#059669' : fKozak >= 0.6 ? '#f59e0b' : '#dc2626'};">${fKozak.toFixed(2)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">× Codon factor (f<sub>codon</sub>):</span>
+                            <span style="font-weight: 600; color: ${isAUG ? '#059669' : '#f59e0b'};">${fCodon.toFixed(2)} ${isAUG ? '(AUG)' : '(near-cognate)'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">× Structure factor (f<sub>struct</sub>):</span>
+                            <span style="font-weight: 600; color: ${fStructure > 1.0 ? '#059669' : '#64748b'};">${fStructure.toFixed(2)} <span style="color: #94a3b8; font-size: 0.8rem;">(downstream GC=${(gcContent * 100).toFixed(0)}%)</span></span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.5rem 0; font-style: italic;">
+                            High downstream GC → stronger structure → slower scanning → more time to initiate
+                        </p>
+                        <div style="border-top: 2px solid #cbd5e1; margin-top: 0.5rem; padding-top: 0.5rem; display: flex; justify-content: space-between;">
+                            <span style="font-weight: 600;">= Initiation Probability:</span>
+                            <span style="font-weight: 700; color: ${translon.color}; font-size: 1.1rem;">${(translon.initiationRate * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span class="detail-label" style="margin: 0;">Initiation Rate (Manual Override)</span>
+                        <span style="font-weight: bold; color: ${translon.color};" id="modal-init-${index}">${Math.round(translon.initiationRate * 100)}%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="${Math.round(translon.initiationRate * 100)}"
+                           style="width: 100%;"
+                           onInput="updateInitiationRate(${index}, this.value); document.getElementById('modal-init-${index}').textContent = this.value + '%'">
+                    <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Manually adjust to override calculated probability</p>
+                </div>
+
+                <div class="detail-section" style="background: #f8fafc; padding: 1rem; border-radius: 6px;">
+                    <div class="detail-label" style="margin-bottom: 0.75rem;">Reinitiation Probability Scoring</div>
+                    <div style="font-size: 0.85rem; line-height: 1.6;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">Base r₀:</span>
+                            <span style="font-weight: 600;">${(rdgModelParams.reinitiationBase * 100).toFixed(0)}%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">× Length factor (f<sub>length</sub>):</span>
+                            <span style="font-weight: 600;">${fLength.toFixed(2)} <span style="color: #94a3b8; font-size: 0.8rem;">(${orfLength}nt ORF)</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                            <span style="color: #64748b;">× Spacing factor (f<sub>spacing</sub>):</span>
+                            <span style="font-weight: 600;">${fSpacing.toFixed(2)} <span style="color: #94a3b8; font-size: 0.8rem;">(${spacingToNext}nt to next)</span></span>
+                        </div>
+                        <div style="border-top: 2px solid #cbd5e1; margin-top: 0.5rem; padding-top: 0.5rem; display: flex; justify-content: space-between;">
+                            <span style="font-weight: 600;">= Reinitiation Probability:</span>
+                            <span style="font-weight: 700; color: ${translon.color}; font-size: 1.1rem;">${(translon.reinitiationRate * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span class="detail-label" style="margin: 0;">Reinitiation Rate (Manual Override)</span>
+                        <span style="font-weight: bold; color: ${translon.color};" id="modal-reinit-${index}">${Math.round(translon.reinitiationRate * 100)}%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="${Math.round(translon.reinitiationRate * 100)}"
+                           style="width: 100%;"
+                           onInput="updateReinitiationRate(${index}, this.value); document.getElementById('modal-reinit-${index}').textContent = this.value + '%'">
+                    <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Manually adjust to override calculated probability</p>
+                </div>
+            `;
+
+            document.getElementById('translon-modal').classList.add('active');
+        }
+
+        // Update translon custom name
+        function updateTranslonName(index) {
+            const input = document.getElementById(`translon-custom-name-${index}`);
+            const newName = input.value.trim();
+
+            if (newName) {
+                translons[index].displayName = newName;
+            } else {
+                translons[index].displayName = null; // Reset to default
+            }
+
+            renderControls(); // Update UI
+            drawGraph(); // Redraw to update labels
+
+            // Update modal title
+            const displayName = translons[index].displayName || translons[index].name;
+            document.getElementById('modal-title').textContent = displayName;
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('translon-modal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('translon-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'translon-modal') {
+                closeModal();
+            }
+        });
+
+        // Export canvas as PNG with white background
+        function exportPNG() {
+            // Create a temporary canvas with white background
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Fill with white background
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Draw the original canvas on top
+            tempCtx.drawImage(canvas, 0, 0);
+
+            // Export
+            const link = document.createElement('a');
+            link.download = `rdg-${viewMode}-${Date.now()}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Video export using MediaRecorder
+        let videoRecorder = null;
+        let recordedChunks = [];
+        let isRecordingVideo = false;
+
+        async function exportVideo() {
+            if (isRecordingVideo) {
+                // Stop recording
+                isRecordingVideo = false;
+                const btn = document.getElementById('export-video-btn');
+                btn.disabled = true;
+                btn.textContent = '⏳ Processing...';
+
+                try {
+                    if (videoRecorder && videoRecorder.state !== 'inactive') {
+                        videoRecorder.stop();
+                    } else {
+                        throw new Error('No recording in progress');
+                    }
+                } catch (error) {
+                    console.error('Recording stop error:', error);
+                    alert('Recording failed: ' + error.message);
+                    btn.textContent = '🎥 Video';
+                    btn.disabled = false;
+                    videoRecorder = null;
+                    recordedChunks = [];
+                }
+            } else {
+                // Start recording
+                if (!isRunning) {
+                    alert('Please start the simulation first (▶ Start button)');
+                    return;
+                }
+
+                const btn = document.getElementById('export-video-btn');
+
+                try {
+                    // Use MediaRecorder to capture canvas stream
+                    const stream = canvas.captureStream(30); // 30 FPS
+                    recordedChunks = [];
+
+                    videoRecorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp9',
+                        videoBitsPerSecond: 2500000
+                    });
+
+                    videoRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    videoRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const link = document.createElement('a');
+                        link.download = `rdg-${viewMode}-${Date.now()}.webm`;
+                        link.href = URL.createObjectURL(blob);
+                        link.click();
+
+                        btn.textContent = '🎥 Video';
+                        btn.disabled = false;
+                        videoRecorder = null;
+                        recordedChunks = [];
+                    };
+
+                    videoRecorder.onerror = (error) => {
+                        console.error('MediaRecorder error:', error);
+                        alert('Recording failed: ' + error);
+                        btn.textContent = '🎥 Video';
+                        btn.disabled = false;
+                        videoRecorder = null;
+                        recordedChunks = [];
+                    };
+
+                    videoRecorder.start();
+                    isRecordingVideo = true;
+                    btn.textContent = '⏹ Stop Recording (5s)';
+
+                    // Automatically stop after 5 seconds
+                    setTimeout(() => {
+                        if (isRecordingVideo) {
+                            exportVideo();
+                        }
+                    }, 5000);
+
+                } catch (error) {
+                    console.error('Recording start error:', error);
+                    alert('Could not start recording: ' + error.message + '\n\nYour browser may not support video recording.');
+                    btn.textContent = '🎥 Video';
+                    videoRecorder = null;
+                    recordedChunks = [];
+                }
+            }
+        }
+
+        // Export button listeners
+        document.getElementById('export-png-btn').addEventListener('click', exportPNG);
+        document.getElementById('export-video-btn').addEventListener('click', exportVideo);
+
+        // Render products
+        function renderProducts() {
+            const container = document.getElementById('product-list');
+            container.innerHTML = '';
+
+            // Single products
+            translons.forEach(translon => {
+                const product = document.createElement('div');
+                product.className = 'product-item';
+                product.innerHTML = `
+                    <div class="product-color" style="background: ${translon.color};"></div>
+                    <div class="product-info">
+                        <div class="product-name">${translon.name}</div>
+                    </div>
+                    <div class="product-count">${productCounts[translon.name] || 0}</div>
+                `;
+                container.appendChild(product);
+            });
+
+            // Dual products (all combinations)
+            const sortedTranslons = [...translons].sort((a, b) => a.startNt - b.startNt);
+            for (let i = 0; i < sortedTranslons.length; i++) {
+                for (let j = i + 1; j < sortedTranslons.length; j++) {
+                    const t1 = sortedTranslons[i];
+                    const t2 = sortedTranslons[j];
+                    const key = `${t1.name}+${t2.name}`;
+
+                    if (productCounts[key] > 0) {
+                        const dualProduct = document.createElement('div');
+                        dualProduct.className = 'product-item';
+                        dualProduct.innerHTML = `
+                            <div class="product-color" style="background: linear-gradient(90deg, ${t1.color} 50%, ${t2.color} 50%);"></div>
+                            <div class="product-info">
+                                <div class="product-name">${t1.name}+${t2.name}</div>
+                            </div>
+                            <div class="product-count">${productCounts[key]}</div>
+                        `;
+                        container.appendChild(dualProduct);
+                    }
+                }
+            }
+        }
+
+        // Update initiation rate
+        window.updateInitiationRate = function(index, value) {
+            translons[index].initiationRate = parseInt(value) / 100;
+            document.getElementById(`init-${index}`).textContent = value + '%';
+        };
+
+        // Update reinitiation rate
+        window.updateReinitiationRate = function(index, value) {
+            translons[index].reinitiationRate = parseInt(value) / 100;
+            document.getElementById(`reinit-${index}`).textContent = value + '%';
+        };
+
+        // Remove translon
+        window.removeTranslon = function(index) {
+            if (translons.length <= 1) return;
+            translons.splice(index, 1);
+            initProductCounts();
+            renderControls();
+            renderProducts();
+            resizeCanvas(); // Resize canvas after removing translon
+        };
+
+        // Add translon on canvas click
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const clickNt = pixelToNt(x);
+
+            // Check if clicking on an existing translon
+            const { edges } = calculateTreeLayout();
+            for (const edge of edges) {
+                if (edge.type === 'translation') {
+                    const x1 = ntToPixel(edge.x1);
+                    const x2 = ntToPixel(edge.x2);
+                    const edgeY = edge.y1;
+
+                    // In flux mode, use variable thickness for hit detection
+                    let hitThreshold = 10;
+                    if (viewMode === 'flux') {
+                        const usage = translonUsage[edge.translon.name] || 0;
+                        const maxUsage = Math.max(...Object.values(translonUsage), 1);
+                        hitThreshold = Math.max(5, (usage / maxUsage) * 12);
+                    }
+
+                    // Check if click is on this translation bar
+                    if (x >= x1 && x <= x2 && Math.abs(y - edgeY) < hitThreshold) {
+                        const translonIndex = translons.findIndex(t => t.name === edge.translon.name);
+                        if (translonIndex !== -1) {
+                            showTranslonModal(translonIndex);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Otherwise, check for frame track clicks to add new translon
+            const frameY = [40, 70, 100]; // Same as in drawGraph
+            let clickedFrame = -1;
+            for (let i = 0; i < frameY.length; i++) {
+                if (y > frameY[i] - 15 && y < frameY[i] + 15) {
+                    clickedFrame = i;
+                    break;
+                }
+            }
+
+            if (clickedFrame !== -1) {
+
+                // Find nearest start codon in the clicked frame
+                let nearestStart = null;
+                let minDist = Infinity;
+
+                for (const start of startCodons) {
+                    if (start.frame === clickedFrame) {
+                        const dist = Math.abs(start.pos - clickNt);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestStart = start;
+                        }
+                    }
+                }
+
+                if (nearestStart && minDist < 30) { // Within 30nt tolerance
+                    const yPos = 170 + (translons.length * 80);
+                    const color = FRAME_COLORS[nearestStart.frame]; // Color by frame
+
+                    translons.push({
+                        name: `Translon ${translons.length + 1}`,
+                        displayName: null, // Custom user-provided name
+                        frame: nearestStart.frame,
+                        startNt: nearestStart.pos,
+                        endNt: nearestStart.stopPos,
+                        start: ntToPixel(nearestStart.pos),
+                        end: ntToPixel(nearestStart.stopPos),
+                        color: color,
+                        y: Math.min(yPos, 550),
+                        initiationRate: 0.3,  // Probability of initiating when scanning ribosome reaches this site
+                        reinitiationRate: 0.5 // Probability of rejoining scanning pool after completing this translon
+                    });
+
+                    console.log(`Added ${nearestStart.codon} at ${nearestStart.pos} -> ${nearestStart.stopPos} (frame ${nearestStart.frame})`);
+
+                    initProductCounts();
+                    initUsageTracking();
+                    renderControls();
+                    renderProducts();
+                    resizeCanvas(); // Resize canvas to accommodate new translon
+                }
+            }
+        });
+
+        // Calculate tree layout - ROOT at 5' end, branches at start sites
+        function calculateTreeLayout() {
+            const nodes = [];
+            const edges = [];
+            const branchSpacing = 80; // Vertical spacing between branches
+
+            // Start with root node at 5' end (with buffer from frame tracks)
+            let currentY = 200; // Increased from 150 to add buffer
+            const rootNode = {
+                id: 'root',
+                x: 0, // 5' end
+                y: currentY,
+                type: 'root'
+            };
+            nodes.push(rootNode);
+
+            let previousNode = rootNode;
+
+            // If no translons, just show non-coding path to end
+            if (translons.length === 0) {
+                const endNode = {
+                    id: 'end',
+                    x: sequence.length,
+                    y: currentY,
+                    type: 'end'
+                };
+                nodes.push(endNode);
+
+                edges.push({
+                    from: 'root',
+                    to: 'end',
+                    x1: 0,
+                    y1: currentY,
+                    x2: sequence.length,
+                    y2: currentY,
+                    type: 'noncoding'
+                });
+
+                return { nodes, edges };
+            }
+
+            // Sort translons by start position
+            const sortedTranslons = [...translons].sort((a, b) => a.startNt - b.startNt);
+
+            // Process each translon as a decision point
+            sortedTranslons.forEach((translon, index) => {
+                const branchX = translon.startNt;
+                const branchY = currentY;
+
+                // Decision point node (at the start codon)
+                const decisionNode = {
+                    id: `decision_${index}`,
+                    x: branchX,
+                    y: branchY,
+                    type: 'decision'
+                };
+                nodes.push(decisionNode);
+
+                // Edge from previous node to decision point (horizontal non-coding path)
+                edges.push({
+                    from: previousNode.id,
+                    to: decisionNode.id,
+                    x1: previousNode.x,
+                    y1: previousNode.y,
+                    x2: branchX,
+                    y2: branchY,
+                    type: 'noncoding'
+                });
+
+                // TWO paths from decision point:
+                // Path 1: Translation path (goes up)
+                const translationY = branchY - branchSpacing / 2;
+                const translationEndNode = {
+                    id: `${translon.name}_end`,
+                    x: translon.endNt,
+                    y: translationY,
+                    type: 'endpoint',
+                    translon: translon
+                };
+                nodes.push(translationEndNode);
+
+                // Vertical line at decision + translation edge
+                edges.push({
+                    from: decisionNode.id,
+                    to: translationEndNode.id,
+                    x1: branchX,
+                    y1: branchY,
+                    x2: branchX,
+                    y2: translationY,
+                    type: 'vertical_branch'
+                });
+                edges.push({
+                    from: decisionNode.id,
+                    to: translationEndNode.id,
+                    x1: branchX,
+                    y1: translationY,
+                    x2: translon.endNt,
+                    y2: translationY,
+                    type: 'translation',
+                    translon: translon
+                });
+
+                // Path 2: Scanning continues (goes down)
+                const scanningY = branchY + branchSpacing / 2;
+                const scanningNode = {
+                    id: `scanning_${index}`,
+                    x: branchX,
+                    y: scanningY,
+                    type: 'scanning'
+                };
+                nodes.push(scanningNode);
+
+                edges.push({
+                    from: decisionNode.id,
+                    to: scanningNode.id,
+                    x1: branchX,
+                    y1: branchY,
+                    x2: branchX,
+                    y2: scanningY,
+                    type: 'vertical_branch'
+                });
+
+                // Reinitiation path: from translation end back down to scanning path
+                edges.push({
+                    from: translationEndNode.id,
+                    to: scanningNode.id,
+                    x1: translon.endNt,
+                    y1: translationY,
+                    x2: translon.endNt,
+                    y2: scanningY,
+                    type: 'reinitiation',
+                    translon: translon
+                });
+
+                // Continue from scanning path
+                previousNode = scanningNode;
+                currentY = scanningY;
+            });
+
+            // Add final non-coding path to 3' end
+            const endNode = {
+                id: 'end',
+                x: sequence.length,
+                y: currentY,
+                type: 'end'
+            };
+            nodes.push(endNode);
+
+            edges.push({
+                from: previousNode.id,
+                to: endNode.id,
+                x1: previousNode.x,
+                y1: previousNode.y,
+                x2: sequence.length,
+                y2: currentY,
+                type: 'noncoding'
+            });
+
+            return { nodes, edges };
+        }
+
+        // Draw tree/cladogram layout
+        function drawTreeLayout() {
+            console.log('drawTreeLayout called!');
+            const margin = 50;
+            const seqEndX = canvas.width - margin;
+
+            // Calculate tree layout
+            const { nodes, edges } = calculateTreeLayout();
+            console.log('Tree nodes:', nodes);
+            console.log('Tree edges:', edges);
+
+            // Draw 3 frame tracks (same as frame view)
+            const frameY = [40, 70, 100];
+            const frameBarHeight = 20;
+            const frameLabels = ['Frame 0', 'Frame 1', 'Frame 2'];
+
+            // Draw frame labels
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'right';
+
+            frameY.forEach((y, frame) => {
+                // Frame label
+                ctx.fillStyle = FRAME_COLORS[frame];
+                ctx.fillText(frameLabels[frame], margin - 10, y + 6);
+
+                // Frame bar (colored by frame)
+                ctx.fillStyle = FRAME_COLORS[frame];
+                ctx.globalAlpha = 0.2;
+                ctx.fillRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+                ctx.globalAlpha = 1;
+
+                // Frame bar border
+                ctx.strokeStyle = FRAME_COLORS[frame];
+                ctx.lineWidth = 1;
+                ctx.strokeRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+            });
+
+            // Draw vertical lines for start and stop codons on their respective frames
+            for (const start of startCodons) {
+                const x = ntToPixel(start.pos);
+                const y = frameY[start.frame];
+
+                // Start codon vertical line
+                if (start.isAUG) {
+                    ctx.strokeStyle = '#059669';
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = '#34d399';
+                    ctx.lineWidth = 2;
+                }
+                ctx.beginPath();
+                ctx.moveTo(x, y - frameBarHeight/2);
+                ctx.lineTo(x, y + frameBarHeight/2);
+                ctx.stroke();
+
+                // Stop codon vertical line (if found)
+                if (start.stopPos < sequence.length) {
+                    const stopX = ntToPixel(start.stopPos - 3);
+                    ctx.strokeStyle = '#dc2626';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(stopX, y - frameBarHeight/2);
+                    ctx.lineTo(stopX, y + frameBarHeight/2);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw 5' and 3' labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("5'", margin - 30, frameY[1] + 4);
+            ctx.fillText("3'", seqEndX + 20, frameY[1] + 4);
+
+            // Draw RDG decision graph structure using node/edge layout
+            // Render all edges based on their type
+            edges.forEach(edge => {
+                const x1 = ntToPixel(edge.x1);
+                const x2 = ntToPixel(edge.x2);
+
+                if (edge.type === 'noncoding') {
+                    // Thin gray horizontal line (scanning path)
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                } else if (edge.type === 'vertical_branch') {
+                    // Thin black vertical line at decision point
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                } else if (edge.type === 'translation') {
+                    // Thick colored bar for translation
+                    ctx.strokeStyle = edge.translon.color;
+                    ctx.lineWidth = 12;
+                    ctx.lineCap = 'butt';
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+
+                    // Translon label at end
+                    ctx.fillStyle = edge.translon.color;
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(edge.translon.name, x2 + 5, edge.y2 + 4);
+                } else if (edge.type === 'reinitiation') {
+                    // Dashed purple arrow from translation end back to scanning path
+                    ctx.strokeStyle = '#8b5cf6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+
+                    // Arrow head pointing down
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(x2, edge.y2);
+                    ctx.lineTo(x2 - 6, edge.y2 - 8);
+                    ctx.lineTo(x2 + 6, edge.y2 - 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            });
+        }
+
+        // Draw flux layout - thickness based on usage
+        function drawFluxLayout() {
+            const margin = 50;
+            const seqEndX = canvas.width - margin;
+
+            // Draw frame tracks (same as tree view)
+            const frameY = [40, 70, 100];
+            const frameBarHeight = 20;
+            const frameLabels = ['Frame 0', 'Frame 1', 'Frame 2'];
+
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'right';
+
+            frameY.forEach((y, frame) => {
+                ctx.fillStyle = FRAME_COLORS[frame];
+                ctx.fillText(frameLabels[frame], margin - 10, y + 6);
+
+                ctx.fillStyle = FRAME_COLORS[frame];
+                ctx.globalAlpha = 0.2;
+                ctx.fillRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+                ctx.globalAlpha = 1;
+
+                ctx.strokeStyle = FRAME_COLORS[frame];
+                ctx.lineWidth = 1;
+                ctx.strokeRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+            });
+
+            // Draw start/stop markers
+            for (const start of startCodons) {
+                const x = ntToPixel(start.pos);
+                const y = frameY[start.frame];
+
+                if (start.isAUG) {
+                    ctx.strokeStyle = '#059669';
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = '#34d399';
+                    ctx.lineWidth = 2;
+                }
+                ctx.beginPath();
+                ctx.moveTo(x, y - frameBarHeight/2);
+                ctx.lineTo(x, y + frameBarHeight/2);
+                ctx.stroke();
+
+                if (start.stopPos < sequence.length) {
+                    const stopX = ntToPixel(start.stopPos - 3);
+                    ctx.strokeStyle = '#dc2626';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(stopX, y - frameBarHeight/2);
+                    ctx.lineTo(stopX, y + frameBarHeight/2);
+                    ctx.stroke();
+                }
+            }
+
+            // 5' and 3' labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("5'", margin - 30, frameY[1] + 4);
+            ctx.fillText("3'", seqEndX + 20, frameY[1] + 4);
+
+            // Calculate max usage for scaling
+            const maxUsage = Math.max(...Object.values(translonUsage), 1);
+
+            // Draw tree structure with variable thickness
+            const { nodes, edges } = calculateTreeLayout();
+
+            edges.forEach(edge => {
+                const x1 = ntToPixel(edge.x1);
+                const x2 = ntToPixel(edge.x2);
+
+                if (edge.type === 'noncoding') {
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                } else if (edge.type === 'vertical_branch') {
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                } else if (edge.type === 'translation') {
+                    // Variable thickness based on usage
+                    const usage = translonUsage[edge.translon.name] || 0;
+                    const thickness = Math.max(2, (usage / maxUsage) * 20);
+
+                    ctx.strokeStyle = edge.translon.color;
+                    ctx.lineWidth = thickness;
+                    ctx.lineCap = 'butt';
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+
+                    // Translon label with usage count
+                    ctx.fillStyle = edge.translon.color;
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${edge.translon.name} (${usage})`, x2 + 5, edge.y2 + 4);
+                } else if (edge.type === 'reinitiation') {
+                    ctx.strokeStyle = '#8b5cf6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, edge.y1);
+                    ctx.lineTo(x2, edge.y2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(x2, edge.y2);
+                    ctx.lineTo(x2 - 6, edge.y2 - 8);
+                    ctx.lineTo(x2 + 6, edge.y2 - 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            });
+        }
+
+        // Draw the RDG
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (viewMode === 'tree') {
+                drawTreeLayout();
+                return;
+            }
+
+            if (viewMode === 'flux') {
+                drawFluxLayout();
+                return;
+            }
+        }
+
+        // Draw ribosomes
+        function drawRibosomes() {
+            ribosomes.forEach(ribo => {
+                let x, y;
+
+                if (ribo.state === RIBOSOME_STATE.SCANNING) {
+                    // Scanning ribosome (40S) - small, positioned on scanning path
+                    x = ntToPixel(ribo.ntPosition);
+
+                    // Find current Y position on scanning path
+                    const { nodes, edges } = calculateTreeLayout();
+                    // Find which scanning edge we're on
+                    let scanY = 200; // Default starting Y
+                    for (const edge of edges) {
+                        if (edge.type === 'noncoding' && ribo.ntPosition >= edge.x1 && ribo.ntPosition <= edge.x2) {
+                            scanY = edge.y1;
+                            break;
+                        }
+                    }
+                    y = scanY;
+
+                    // Draw small 40S subunit (scanning)
+                    ctx.fillStyle = '#64748b'; // Gray for scanning
+                    ctx.globalAlpha = 0.7;
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, 8, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+
+                } else if (ribo.state === RIBOSOME_STATE.TRANSLATING) {
+                    // Translating ribosome (80S) - larger, positioned on translation path
+                    const translon = translons.find(t => t.name === ribo.translon);
+                    if (!translon) return;
+
+                    x = translon.start + (translon.end - translon.start) * ribo.progress;
+
+                    const { nodes, edges } = calculateTreeLayout();
+                    const translationEdge = edges.find(e => e.type === 'translation' && e.translon.name === translon.name);
+                    y = translationEdge ? translationEdge.y1 : translon.y;
+
+                    // Draw 80S ribosome (translating)
+                    ctx.fillStyle = translon.color;
+                    ctx.globalAlpha = 0.8;
+                    ctx.beginPath();
+                    ctx.ellipse(x, y - 10, 15, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(x, y + 10, 12, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            });
+        }
+
+        // Check if ribosome would collide with any other ribosome AHEAD (3' direction)
+        // It's a single RNA molecule - collision is purely position-based on the X axis
+        function checkCollision(ribo, newPosition, currentPosition) {
+            const footprint = ribo.state === RIBOSOME_STATE.SCANNING ? FOOTPRINT.SCANNING : FOOTPRINT.TRANSLATING;
+            const riboStart = newPosition;
+            const riboEnd = newPosition + footprint;
+
+            // Check against all other ribosomes
+            for (const other of ribosomes) {
+                if (other.id === ribo.id) continue; // Skip self
+
+                let otherPos, otherFootprint;
+
+                if (other.state === RIBOSOME_STATE.SCANNING) {
+                    otherPos = other.ntPosition;
+                    otherFootprint = FOOTPRINT.SCANNING;
+                } else if (other.state === RIBOSOME_STATE.TRANSLATING) {
+                    const otherTranslon = translons.find(t => t.name === other.translon);
+                    if (!otherTranslon) continue;
+                    otherPos = otherTranslon.startNt + (other.progress * (otherTranslon.endNt - otherTranslon.startNt));
+                    otherFootprint = FOOTPRINT.TRANSLATING;
+                } else {
+                    continue;
+                }
+
+                const otherStart = otherPos;
+                const otherEnd = otherPos + otherFootprint;
+
+                // Only check ribosomes that are DOWNSTREAM (3' direction)
+                // A ribosome is downstream if its START position is ahead of our CURRENT position
+                if (otherStart <= currentPosition) continue;
+
+                // Check for overlap: our new footprint would overlap with their footprint
+                if (riboStart < otherEnd && riboEnd > otherStart) {
+                    return other; // Collision detected
+                }
+            }
+            return null; // No collision
+        }
+
+        // Update simulation
+        function update() {
+            if (!isRunning) return;
+
+            // Run simulation steps based on speed multiplier
+            for (let speedStep = 0; speedStep < simulationSpeed; speedStep++) {
+                // Add new ribosomes based on loading rate (per second -> per frame)
+                const loadingProbPerFrame = ribosomeLoadingRate / FPS;
+                if (Math.random() < loadingProbPerFrame) {
+                    addRibosome();
+                }
+
+                // Calculate movement per frame based on per-second rates
+                const scanningNtPerFrame = scanningSpeed / FPS;
+                const translationNtPerFrame = (translationSpeed * 3) / FPS; // codons to nucleotides
+
+            // Sort ribosomes by position (5' to 3') to process in order
+            ribosomes.sort((a, b) => {
+                const posA = a.state === RIBOSOME_STATE.SCANNING ? a.ntPosition :
+                            translons.find(t => t.name === a.translon)?.startNt + a.progress * (translons.find(t => t.name === a.translon)?.endNt - translons.find(t => t.name === a.translon)?.startNt) || 0;
+                const posB = b.state === RIBOSOME_STATE.SCANNING ? b.ntPosition :
+                            translons.find(t => t.name === b.translon)?.startNt + b.progress * (translons.find(t => t.name === b.translon)?.endNt - translons.find(t => t.name === b.translon)?.startNt) || 0;
+                return posA - posB;
+            });
+
+            ribosomes = ribosomes.filter(ribo => {
+                if (ribo.state === RIBOSOME_STATE.SCANNING) {
+                    // Current position
+                    const currentPosition = ribo.ntPosition;
+
+                    // Calculate new position
+                    const newPosition = currentPosition + scanningNtPerFrame;
+
+                    // Check for collision
+                    const collision = checkCollision(ribo, newPosition, currentPosition);
+
+                    if (collision) {
+                        // Handle collision based on mode
+                        if (collisionMode === 'falloff') {
+                            // Scanning ribosome falls off
+                            return false;
+                        } else {
+                            // Queue mode - don't move, wait
+                            // (ribosome stays at current position)
+                            return true;
+                        }
+                    }
+
+                    // No collision - move forward
+                    ribo.ntPosition = newPosition;
+
+                    // Check if we've reached the end
+                    if (ribo.ntPosition >= sequence.length) {
+                        return false; // Remove ribosome
+                    }
+
+                    // Check if we've reached a start codon
+                    const sortedTranslons = [...translons].sort((a, b) => a.startNt - b.startNt);
+                    for (const translon of sortedTranslons) {
+                        // If we've reached this translon's start site
+                        if (ribo.ntPosition >= translon.startNt && ribo.ntPosition < translon.startNt + 3) {
+                            // Decision: initiate or continue scanning?
+                            if (Math.random() < translon.initiationRate) {
+                                // Initiate translation
+                                ribo.state = RIBOSOME_STATE.TRANSLATING;
+                                ribo.translon = translon.name;
+                                ribo.progress = 0;
+
+                                // Track usage
+                                if (!translonUsage[translon.name]) translonUsage[translon.name] = 0;
+                                translonUsage[translon.name]++;
+
+                                break;
+                            }
+                            // Otherwise continue scanning (skip past this codon)
+                            ribo.ntPosition = translon.startNt + 3;
+                        }
+                    }
+                    return true;
+
+                } else if (ribo.state === RIBOSOME_STATE.TRANSLATING) {
+                    const translon = translons.find(t => t.name === ribo.translon);
+                    if (!translon) return false;
+
+                    // Get current position
+                    const translonLength = translon.endNt - translon.startNt;
+                    const currentPosition = translon.startNt + (ribo.progress * translonLength);
+
+                    // Get current codon for decoding rate
+                    const currentNt = translon.startNt + Math.floor(ribo.progress * translonLength);
+                    const codonPos = Math.floor((currentNt - translon.startNt) / 3) * 3 + translon.startNt;
+                    const currentCodon = sequence.substring(codonPos, codonPos + 3);
+
+                    // Get decoding rate for this codon (or use default)
+                    const codonRate = codonDecodingRates[currentCodon] || translationSpeed;
+                    const codonNtPerFrame = (codonRate * 3) / FPS; // Convert codons/sec to nt/frame
+
+                    // Calculate new progress and position
+                    const newProgress = ribo.progress + (codonNtPerFrame / translonLength);
+                    const newPosition = translon.startNt + (newProgress * translonLength);
+
+                    // Check for collision
+                    const collision = checkCollision(ribo, newPosition, currentPosition);
+
+                    if (collision) {
+                        // Translating ribosomes ALWAYS queue (both modes)
+                        // Don't move, wait for space
+                        return true;
+                    }
+
+                    // No collision - move forward
+                    ribo.progress = newProgress;
+
+                    if (ribo.progress >= 1) {
+                        // Ribosome completed translation
+                        ribo.completedTranslons.push(ribo.translon);
+
+                        // Check for reinitiation (use translon-specific reinitiation rate)
+                        if (Math.random() < translon.reinitiationRate) {
+                            // Resume scanning from end of translon
+                            ribo.state = RIBOSOME_STATE.SCANNING;
+                            ribo.ntPosition = translon.endNt;
+                            ribo.translon = null;
+                            ribo.progress = 0;
+                            return true;
+                        }
+
+                        // Termination - record products
+                        if (ribo.completedTranslons.length > 1) {
+                            // Multi-cistronic product
+                            const key = ribo.completedTranslons.join('+');
+                            if (!productCounts[key]) productCounts[key] = 0;
+                            productCounts[key]++;
+                        } else {
+                            // Single product
+                            productCounts[ribo.translon]++;
+                        }
+
+                        completedCount++;
+                        renderProducts();
+                        updateStats();
+                        return false;
+                    }
+                    return true;
+                }
+                return true;
+            });
+            } // End speed multiplier loop
+
+            drawGraph();
+            drawRibosomes();
+
+            requestAnimationFrame(update);
+        }
+
+        // Add a new ribosome (starts as scanning 40S at 5' end)
+        function addRibosome() {
+            ribosomes.push({
+                id: ribosomeIdCounter++,
+                state: RIBOSOME_STATE.SCANNING,
+                ntPosition: 0, // Start at 5' end
+                translon: null, // Not translating yet
+                progress: 0, // For translation progress
+                completedTranslons: [] // Track completed translations for multi-cistronic products
+            });
+        }
+
+        // Old function - keeping for reference but not used
+        function addRibosomeOld() {
+            // Sort translons by start position (5' to 3')
+            const sortedTranslons = [...translons].sort((a, b) => a.startNt - b.startNt);
+
+            const rand = Math.random();
+            let cumulative = 0;
+            let selectedTranslon = null;
+
+            for (const translon of sortedTranslons) {
+                cumulative += translon.probability;
+                if (rand < cumulative) {
+                    selectedTranslon = translon.name;
+                    break;
+                }
+            }
+
+            if (selectedTranslon) {
+                ribosomes.push({
+                    id: ribosomeIdCounter++,
+                    translon: selectedTranslon,
+                    progress: 0
+                });
+                updateStats();
+            }
+        }
+
+        // Update stats
+        function updateStats() {
+            document.getElementById('total-ribosomes').textContent = ribosomeIdCounter;
+            document.getElementById('completed-ribosomes').textContent = completedCount;
+        }
+
+        // Start/stop simulation
+        startBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startBtn.textContent = isRunning ? '⏸ Pause' : '▶ Start Simulation';
+            if (isRunning) {
+                update();
+            }
+        });
+
+        // Reset simulation
+        resetBtn.addEventListener('click', () => {
+            isRunning = false;
+            ribosomes = [];
+            ribosomeIdCounter = 0;
+            initProductCounts();
+            initUsageTracking();
+            completedCount = 0;
+            startBtn.textContent = '▶ Start';
+            renderProducts();
+            updateStats();
+            drawGraph();
+        });
+
+        // Speed control buttons
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                simulationSpeed = parseInt(btn.dataset.speed);
+
+                // Update button styles
+                document.querySelectorAll('.speed-btn').forEach(b => {
+                    b.style.background = '#f8fafc';
+                    b.style.color = '#64748b';
+                    b.style.border = '2px solid #e2e8f0';
+                });
+                btn.style.background = '#667eea';
+                btn.style.color = 'white';
+                btn.style.border = '2px solid #667eea';
+            });
+        });
+
+        // Ensembl lookup event listeners
+        document.getElementById('fetchButton').addEventListener('click', processIdentifier);
+
+        // Allow Enter key to trigger fetch
+        document.getElementById('geneInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                processIdentifier();
+            }
+        });
+
+        // Radio button change handlers - show/hide Ensembl lookup UI
+        document.querySelectorAll('input[name="input_type"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                const ensemblLookup = document.getElementById('ensemblLookup');
+                const isManual = document.getElementById('radioManual').checked;
+
+                if (isManual) {
+                    ensemblLookup.style.display = 'none';
+                } else {
+                    ensemblLookup.style.display = 'block';
+                    // Update placeholder based on selection
+                    const geneInput = document.getElementById('geneInput');
+                    if (document.getElementById('radioSymbol').checked) {
+                        geneInput.placeholder = 'e.g., BRCA1, TP53, ATF4';
+                    } else {
+                        geneInput.placeholder = 'e.g., ENST00000380152';
+                    }
+                }
+
+                // Clear status message when switching
+                document.getElementById('statusMessage').textContent = '';
+            });
+        });
+
+        // Initial render
+        renderControls();
+        renderProducts();
+        drawGraph();
+
+        // Set initial speed button style (1x selected by default)
+        document.querySelector('.speed-btn[data-speed="1"]').style.background = '#667eea';
+        document.querySelector('.speed-btn[data-speed="1"]').style.color = 'white';
+        document.querySelector('.speed-btn[data-speed="1"]').style.border = '2px solid #667eea';
+    </script>
+</body>
+</html>
