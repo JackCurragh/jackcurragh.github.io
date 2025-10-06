@@ -19,6 +19,12 @@
             min-height: 100vh;
         }
 
+        @media (max-width: 968px) {
+            body {
+                padding: 1rem;
+            }
+        }
+
         .container {
             max-width: 1600px;
             margin: 0 auto;
@@ -39,6 +45,12 @@
         h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 968px) {
+            h1 {
+                font-size: 1.8rem;
+            }
         }
 
         .subtitle {
@@ -71,11 +83,9 @@
 
         .visualization {
             background: rgba(255, 255, 255, 0.95);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            max-height: 80vh;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
         }
@@ -132,21 +142,35 @@
         }
 
         .canvas-container {
-            flex: 1;
+            min-height: 600px;
+            height: 70vh;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
+        @media (max-width: 968px) {
+            .canvas-container {
+                height: 50vh;
+                min-height: 400px;
+            }
+        }
+
         .viz-controls {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 1.5rem;
-            padding: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
             background: #f8fafc;
             border-radius: 8px;
             flex-wrap: wrap;
+        }
+
+        @media (max-width: 968px) {
+            .viz-controls {
+                gap: 0.5rem;
+            }
         }
 
         .view-mode-selector {
@@ -162,17 +186,31 @@
         }
 
         .view-mode-selector select {
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.75rem;
             border-radius: 6px;
             border: 2px solid #cbd5e1;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             background: white;
             color: #1e293b;
         }
 
+        @media (max-width: 968px) {
+            .view-mode-selector select {
+                padding: 0.3rem 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
+
         .sim-controls {
             display: flex;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 968px) {
+            .sim-controls {
+                gap: 0.4rem;
+            }
         }
 
         canvas {
@@ -188,7 +226,7 @@
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            max-height: 80vh;
+            max-height: 90vh;
             overflow-y: auto;
         }
 
@@ -469,13 +507,20 @@
         }
 
         button {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem 1rem;
             border: none;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 600;
+        }
+
+        @media (max-width: 968px) {
+            button {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
         }
 
         .primary-btn {
@@ -557,33 +602,46 @@
 
         .hint {
             background: rgba(102, 126, 234, 0.1);
-            padding: 1rem;
+            padding: 0.6rem;
             border-radius: 6px;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             color: #667eea;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 968px) {
+            .hint {
+                font-size: 0.75rem;
+                padding: 0.5rem;
+            }
         }
 
         .legend {
             display: flex;
-            gap: 1.5rem;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
+            gap: 1rem;
+            font-size: 0.8rem;
             flex-wrap: wrap;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             color: #334155;
             font-weight: 500;
         }
 
         .legend-marker {
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             border-radius: 2px;
+        }
+
+        @media (max-width: 968px) {
+            .legend {
+                font-size: 0.75rem;
+                gap: 0.5rem;
+            }
         }
 
         .sequence-input {
@@ -625,11 +683,16 @@
         <a href="../index.html" class="back-link">← Back to Demos</a>
 
         <h1>Ribosome Decision Graph</h1>
-        <p class="subtitle">Visualize how ribosomes choose between alternative translation paths</p>
 
         <div class="main-content">
             <div class="left-panel">
                 <div class="visualization">
+                    <div class="canvas-container">
+                        <canvas id="rdg-canvas"></canvas>
+                    </div>
+                    <div class="hint">
+                        💡 Click on start codons (green markers) to add translons
+                    </div>
                     <div class="viz-controls">
                         <div class="legend">
                             <div class="legend-item">
@@ -666,11 +729,81 @@
                             <button class="secondary-btn speed-btn" data-speed="10" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">10x</button>
                         </div>
                     </div>
-                    <div class="canvas-container">
-                        <canvas id="rdg-canvas"></canvas>
+                </div>
+
+                <div class="bottom-panels">
+                    <div class="translons-section">
+                        <h2>Translons</h2>
+                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                            Click on start codons in the visualization to add translons
+                        </p>
+                        <div class="control-group" id="translon-controls">
+                            <!-- Dynamically generated translon controls -->
+                        </div>
+
+                        <h3 style="font-size: 1.1rem; color: #333; margin-top: 2rem; margin-bottom: 0.75rem;">Readthrough Stops</h3>
+                        <div id="readthrough-list" style="margin-bottom: 1.5rem;">
+                            <p style="font-size: 0.85rem; color: #999; font-style: italic;">No readthrough stops marked</p>
+                        </div>
+
+                        <h3 style="font-size: 1.1rem; color: #333; margin-bottom: 0.75rem;">Frameshift Sites</h3>
+                        <div id="frameshift-list" style="margin-bottom: 1rem;">
+                            <p style="font-size: 0.85rem; color: #999; font-style: italic;">No frameshift sites marked</p>
+                        </div>
                     </div>
-                    <div class="hint">
-                        💡 Click on start codons (green markers) to add translons
+
+                    <div class="products">
+                        <h3 style="color: #333; margin-bottom: 1rem;">Product Tally</h3>
+                        <div id="product-list">
+                            <!-- Dynamically generated products -->
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-row">
+                                <span>Total ribosomes:</span>
+                                <span class="stat-value" id="total-ribosomes">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Completed:</span>
+                                <span class="stat-value" id="completed-ribosomes">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rdg-model-section">
+                    <h2>Click Mode</h2>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
+                        Choose what happens when you click on the canvas
+                    </p>
+                    <div class="control-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="display: flex; align-items: center; padding: 0.75rem; background: #f0fdf4; border: 2px solid #059669; border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="click-mode" value="translon" checked id="mode-translon" style="margin-right: 0.75rem; width: 18px; height: 18px; cursor: pointer;">
+                            <div>
+                                <strong style="color: #059669; font-size: 0.95rem;">Add Translons</strong>
+                                <p style="font-size: 0.8rem; color: #666; margin: 0.25rem 0 0 0;">
+                                    Click near start codons to add translons (default)
+                                </p>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 0.75rem; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="click-mode" value="readthrough" id="mode-readthrough" style="margin-right: 0.75rem; width: 18px; height: 18px; cursor: pointer;">
+                            <div>
+                                <strong style="color: #f59e0b; font-size: 0.95rem;">Mark Readthrough</strong>
+                                <p style="font-size: 0.8rem; color: #666; margin: 0.25rem 0 0 0;">
+                                    Click stop codons (red markers) to mark for readthrough
+                                </p>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: center; padding: 0.75rem; background: #f3e8ff; border: 2px solid #8b5cf6; border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="click-mode" value="frameshift" id="mode-frameshift" style="margin-right: 0.75rem; width: 18px; height: 18px; cursor: pointer;">
+                            <div>
+                                <strong style="color: #8b5cf6; font-size: 0.95rem;">Add Frameshift</strong>
+                                <p style="font-size: 0.8rem; color: #666; margin: 0.25rem 0 0 0;">
+                                    Click on frame tracks to add frameshift sites
+                                </p>
+                            </div>
+                        </label>
                     </div>
                 </div>
 
@@ -769,36 +902,6 @@
                         <button class="secondary-btn" id="recalculate-btn" style="width: 100%; margin-top: 1rem;">
                             🔄 Recalculate Probabilities
                         </button>
-                    </div>
-                </div>
-
-                <div class="bottom-panels">
-                    <div class="translons-section">
-                        <h2>Translons</h2>
-                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
-                            Click on start codons in the visualization to add translons
-                        </p>
-                        <div class="control-group" id="translon-controls">
-                            <!-- Dynamically generated translon controls -->
-                        </div>
-                    </div>
-
-                    <div class="products">
-                        <h3 style="color: #333; margin-bottom: 1rem;">Product Tally</h3>
-                        <div id="product-list">
-                            <!-- Dynamically generated products -->
-                        </div>
-
-                        <div class="stats">
-                            <div class="stat-row">
-                                <span>Total ribosomes:</span>
-                                <span class="stat-value" id="total-ribosomes">0</span>
-                            </div>
-                            <div class="stat-row">
-                                <span>Completed:</span>
-                                <span class="stat-value" id="completed-ribosomes">0</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -902,6 +1005,10 @@
             </div>
         </div>
     </div>
+
+    <!-- Load shared RDG modules -->
+    <script src="../shared/rdg-engine.js"></script>
+    <script src="../shared/rdg-viz.js"></script>
 
     <script>
         // Ensembl API Configuration
@@ -1027,6 +1134,10 @@
 
         // Translon definitions
         let translons = [];
+
+        // Readthrough stops and frameshift sites
+        let readthroughStops = []; // Array of {pos, frame, codon, probability}
+        let frameshiftSites = []; // Array of {pos, fromFrame, toFrame, shift, probability}
 
         // Responsive canvas sizing
         function resizeCanvas() {
@@ -1319,6 +1430,14 @@
 
         // Calculate start codons with frames and stop positions
         function calculateStartCodons() {
+            // Use shared RDGEngine with readthrough support
+            if (typeof RDGEngine !== 'undefined') {
+                startCodons = RDGEngine.findStartCodons(sequence, readthroughStops);
+                console.log(`Found ${startCodons.length} start codons using RDGEngine (with ${readthroughStops.length} readthrough stops)`);
+                return;
+            }
+
+            // Fallback: manual calculation if RDGEngine not loaded
             startCodons = [];
             const stopCodons = ['UAA', 'UAG', 'UGA'];
             const nearCognates = ['CUG', 'GUG', 'ACG', 'AUU', 'AUA', 'AUC'];
@@ -1329,58 +1448,19 @@
                 if (codon === 'AUG' || nearCognates.includes(codon)) {
                     const frame = i % 3;
 
-                    // Find in-frame stop codon - detailed logging
+                    // Find in-frame stop codon
                     let stopPos = sequence.length;
-                    let foundStop = false;
-
-                    console.log(`\n>>> Searching for stop from ${codon} at position ${i} (frame ${frame})`);
 
                     for (let j = i + 3; j + 2 < sequence.length; j += 3) {
                         const checkCodon = sequence.substring(j, j + 3);
 
-                        // Log first 5 codons checked
-                        if (j < i + 18) {
-                            console.log(`  Position ${j}: ${checkCodon} ${stopCodons.includes(checkCodon) ? '← STOP!' : ''}`);
-                        }
-
                         if (stopCodons.includes(checkCodon)) {
-                            stopPos = j + 3; // Include the stop codon
-                            foundStop = true;
-                            console.log(`  ✓ Found ${checkCodon} at position ${j}, stopPos = ${stopPos}`);
-                            break;
-                        }
-                    }
-
-                    if (!foundStop) {
-                        console.log(`  ✗ No stop found, using end of sequence: ${stopPos}`);
-                    }
-
-                    startCodons.push({
-                        pos: i,
-                        codon: codon,
-                        frame: frame,
-                        stopPos: stopPos,
-                        isAUG: codon === 'AUG'
-                    });
-
-                    // Only log first 3 starts in detail
-                    if (startCodons.length > 3) break;
-                }
-            }
-
-            // Continue without logging for remaining starts
-            for (let i = 0; i < sequence.length - 2; i++) {
-                const codon = sequence.substring(i, i + 3);
-
-                if ((codon === 'AUG' || nearCognates.includes(codon)) && !startCodons.find(s => s.pos === i)) {
-                    const frame = i % 3;
-                    let stopPos = sequence.length;
-
-                    for (let j = i + 3; j + 2 < sequence.length; j += 3) {
-                        const stopCodon = sequence.substring(j, j + 3);
-                        if (stopCodons.includes(stopCodon)) {
-                            stopPos = j + 3;
-                            break;
+                            // Check if this stop can read through
+                            const isReadthrough = readthroughStops.some(rt => rt.pos === j);
+                            if (!isReadthrough) {
+                                stopPos = j + 3; // Include the stop codon
+                                break;
+                            }
                         }
                     }
 
@@ -1394,18 +1474,7 @@
                 }
             }
 
-            console.log('\n=== Summary ===');
-            console.log('Calculated', startCodons.length, 'start sites');
-            console.log('Frame 0:', startCodons.filter(s => s.frame === 0).length);
-            console.log('Frame 1:', startCodons.filter(s => s.frame === 1).length);
-            console.log('Frame 2:', startCodons.filter(s => s.frame === 2).length);
-
-            // Log first few with their stops for debugging
-            console.log('\nFirst 10 starts:');
-            startCodons.slice(0, 10).forEach(s => {
-                const stopCodon = sequence.substring(s.stopPos - 3, s.stopPos);
-                console.log(`  ${s.codon} at ${s.pos} (frame ${s.frame}) -> ${stopCodon} at ${s.stopPos} (length: ${s.stopPos - s.pos}nt)`);
-            });
+            console.log('Calculated', startCodons.length, 'start sites (fallback mode)');
         }
 
         // Load sequence button
@@ -1710,16 +1779,20 @@
             translons.forEach((translon, index) => {
                 const startCodon = sequence.substring(translon.startNt, translon.startNt + 3);
 
+                // DEBUG: Log translon data to find NaN source
+                console.log(`Translon ${index}: name=${translon.name}, startNt=${translon.startNt}, endNt=${translon.endNt}, frame=${translon.frame}, startCodon=${startCodon}, initRate=${translon.initiationRate}, reinitRate=${translon.reinitiationRate}`);
+
                 const summary = document.createElement('div');
                 summary.className = 'translon-summary';
                 summary.style.borderLeftColor = translon.color;
                 summary.onclick = () => showTranslonModal(index);
 
                 const displayName = translon.displayName || translon.name;
+                const endNtDisplay = translon.endNt !== undefined && !isNaN(translon.endNt) ? translon.endNt : 'INVALID';
                 summary.innerHTML = `
                     <div class="translon-summary-info">
                         <div class="translon-summary-name" style="color: ${translon.color};">${displayName}</div>
-                        <div class="translon-summary-meta">${startCodon} • Frame ${translon.frame} • ${translon.startNt}-${translon.endNt} nt</div>
+                        <div class="translon-summary-meta">${startCodon} • Frame ${translon.frame} • ${translon.startNt}-${endNtDisplay} nt</div>
                     </div>
                     ${translons.length > 1 ? `<button class="remove-btn" onclick="event.stopPropagation(); removeTranslon(${index});" style="position: static;">×</button>` : ''}
                 `;
@@ -2099,8 +2172,12 @@
             const y = e.clientY - rect.top;
             const clickNt = pixelToNt(x);
 
+            // Get current click mode
+            const clickMode = document.querySelector('input[name="click-mode"]:checked')?.value || 'translon';
+            console.log(`Canvas clicked at x=${x}, y=${y}, nt=${clickNt}, mode=${clickMode}`);
+
             // Check if clicking on an existing translon
-            const { edges } = calculateTreeLayout();
+            const { edges } = calculateTreeLayoutLocal();
             for (const edge of edges) {
                 if (edge.type === 'translation') {
                     const x1 = ntToPixel(edge.x1);
@@ -2126,8 +2203,93 @@
                 }
             }
 
-            // Otherwise, check for frame track clicks to add new translon
-            const frameY = [40, 70, 100]; // Same as in drawGraph
+            // Frame Y coordinates used throughout
+            const frameY = [80, 110, 140]; // Frame Y coordinates (matching rdg-viz.js)
+
+            // Check for stop codon clicks (for readthrough marking)
+            if (clickMode === 'readthrough') {
+                // First determine which frame was clicked (if any)
+                let clickedFrame = -1;
+                for (let i = 0; i < frameY.length; i++) {
+                    if (Math.abs(y - frameY[i]) < 15) {
+                        clickedFrame = i;
+                        break;
+                    }
+                }
+
+                // Only check stops if we clicked near a frame track
+                if (clickedFrame !== -1) {
+                    // Build list of ALL stops in this frame (scan entire sequence)
+                    const stops = [];
+                    for (let pos = clickedFrame; pos < sequence.length - 2; pos += 3) {
+                        const codon = sequence.substring(pos, pos + 3);
+                        if (['UAA', 'UAG', 'UGA'].includes(codon)) {
+                            stops.push({
+                                pos: pos,
+                                frame: clickedFrame,
+                                codon: codon
+                            });
+                        }
+                    }
+
+                    // Check if clicking on a stop codon
+                    for (const stop of stops) {
+                        const stopX = ntToPixel(stop.pos);
+                        const distX = Math.abs(x - stopX);
+
+                        // Check if click is near this stop horizontally (tight tolerance)
+                        if (distX < 10) {
+                            console.log(`✓ Clicked on stop codon ${stop.codon} at position ${stop.pos}`);
+                            // Ask user if they want to mark for readthrough
+                            const response = confirm(`Mark stop codon ${stop.codon} at position ${stop.pos} for readthrough?`);
+                            if (response) {
+                                addReadthrough(stop.pos, stop.frame, stop.codon);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // If frameshift mode is enabled, add frameshift at clicked position
+            if (clickMode === 'frameshift') {
+                console.log('Frameshift mode enabled, adding frameshift');
+
+                // Determine which frame was clicked
+                let clickedFrame = -1;
+                for (let i = 0; i < frameY.length; i++) {
+                    if (Math.abs(y - frameY[i]) < 20) {
+                        clickedFrame = i;
+                        break;
+                    }
+                }
+
+                if (clickedFrame === -1) {
+                    alert('Click on one of the frame tracks to add a frameshift');
+                    return;
+                }
+
+                const fromFrame = clickedFrame;
+                const shift = -1; // Default to -1
+                const toFrame = (clickedFrame + shift + 3) % 3;
+
+                const response = confirm(`Add frameshift at position ${clickNt} from Frame ${fromFrame} to Frame ${toFrame}?`);
+                if (response) {
+                    frameshiftSites.push({
+                        pos: clickNt,
+                        fromFrame: fromFrame,
+                        toFrame: toFrame,
+                        shift: shift,
+                        probability: 0.5
+                    });
+                    console.log(`Added frameshift at ${clickNt}`);
+                    renderFrameshiftList();
+                    drawGraph();
+                }
+                return;
+            }
+
+            // Otherwise, check for start codon clicks to add new translon
             let clickedFrame = -1;
             for (let i = 0; i < frameY.length; i++) {
                 if (y > frameY[i] - 15 && y < frameY[i] + 15) {
@@ -2137,7 +2299,6 @@
             }
 
             if (clickedFrame !== -1) {
-
                 // Find nearest start codon in the clicked frame
                 let nearestStart = null;
                 let minDist = Infinity;
@@ -2153,6 +2314,26 @@
                 }
 
                 if (nearestStart && minDist < 30) { // Within 30nt tolerance
+                    // Validate that stopPos is valid
+                    if (!nearestStart.stopPos || isNaN(nearestStart.stopPos)) {
+                        console.error('Invalid stopPos for start:', nearestStart);
+                        alert('Cannot add translon: no valid stop codon found for this start');
+                        return;
+                    }
+
+                    // Check if this exact translon already exists
+                    const exists = translons.some(t =>
+                        t.frame === nearestStart.frame &&
+                        t.startNt === nearestStart.pos &&
+                        t.endNt === nearestStart.stopPos
+                    );
+
+                    if (exists) {
+                        console.log(`Translon already exists: frame ${nearestStart.frame}, ${nearestStart.pos} -> ${nearestStart.stopPos}`);
+                        alert('This translon is already in the graph');
+                        return;
+                    }
+
                     const yPos = 170 + (translons.length * 80);
                     const color = FRAME_COLORS[nearestStart.frame]; // Color by frame
 
@@ -2182,7 +2363,7 @@
         });
 
         // Calculate tree layout - ROOT at 5' end, branches at start sites
-        function calculateTreeLayout() {
+        function calculateTreeLayoutLocal() {
             const nodes = [];
             const edges = [];
             const branchSpacing = 80; // Vertical spacing between branches
@@ -2349,7 +2530,7 @@
             const seqEndX = canvas.width - margin;
 
             // Calculate tree layout
-            const { nodes, edges } = calculateTreeLayout();
+            const { nodes, edges } = calculateTreeLayoutLocal();
             console.log('Tree nodes:', nodes);
             console.log('Tree edges:', edges);
 
@@ -2546,7 +2727,7 @@
             const maxUsage = Math.max(...Object.values(translonUsage), 1);
 
             // Draw tree structure with variable thickness
-            const { nodes, edges } = calculateTreeLayout();
+            const { nodes, edges } = calculateTreeLayoutLocal();
 
             edges.forEach(edge => {
                 const x1 = ntToPixel(edge.x1);
@@ -2614,7 +2795,14 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (viewMode === 'tree') {
-                drawTreeLayout();
+                // Use shared RDGViz module with readthrough and frameshift support
+                if (typeof RDGViz !== 'undefined') {
+                    console.log(`Drawing RDG with ${readthroughStops.length} readthrough stops and ${frameshiftSites.length} frameshift sites`);
+                    RDGViz.drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COLORS, null, readthroughStops, frameshiftSites);
+                } else {
+                    console.warn('RDGViz not loaded, using fallback drawTreeLayout');
+                    drawTreeLayout();
+                }
                 return;
             }
 
@@ -2634,7 +2822,7 @@
                     x = ntToPixel(ribo.ntPosition);
 
                     // Find current Y position on scanning path
-                    const { nodes, edges } = calculateTreeLayout();
+                    const { nodes, edges } = calculateTreeLayoutLocal();
                     // Find which scanning edge we're on
                     let scanY = 200; // Default starting Y
                     for (const edge of edges) {
@@ -2660,7 +2848,7 @@
 
                     x = translon.start + (translon.end - translon.start) * ribo.progress;
 
-                    const { nodes, edges } = calculateTreeLayout();
+                    const { nodes, edges } = calculateTreeLayoutLocal();
                     const translationEdge = edges.find(e => e.type === 'translation' && e.translon.name === translon.name);
                     y = translationEdge ? translationEdge.y1 : translon.y;
 
@@ -2992,6 +3180,176 @@
             });
         });
 
+        // ====================================================================
+        // READTHROUGH & FRAMESHIFT MANAGEMENT
+        // ====================================================================
+
+        // Render readthrough stops list
+        function renderReadthroughList() {
+            const container = document.getElementById('readthrough-list');
+            if (readthroughStops.length === 0) {
+                container.innerHTML = '<p style="font-size: 0.85rem; color: #999; font-style: italic;">No readthrough stops marked</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            readthroughStops.forEach((rt, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 0.75rem; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; margin-bottom: 0.5rem;';
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <strong style="color: #92400e;">Stop @ position ${rt.pos}</strong>
+                            <p style="font-size: 0.8rem; color: #78350f; margin-top: 0.25rem;">
+                                Codon: ${rt.codon} | Frame: ${rt.frame}
+                            </p>
+                        </div>
+                        <button onclick="removeReadthrough(${index})" style="background: #dc2626; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                            Remove
+                        </button>
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="font-size: 0.8rem; color: #78350f;">Readthrough Probability: <span id="rt-prob-${index}">${(rt.probability * 100).toFixed(0)}%</span></label>
+                        <input type="range" min="0.01" max="0.99" step="0.01" value="${rt.probability}"
+                               onchange="updateReadthroughProbability(${index}, this.value)"
+                               style="width: 100%; margin-top: 0.25rem;">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Render frameshift sites list
+        function renderFrameshiftList() {
+            const container = document.getElementById('frameshift-list');
+            if (frameshiftSites.length === 0) {
+                container.innerHTML = '<p style="font-size: 0.85rem; color: #999; font-style: italic;">No frameshift sites marked</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            frameshiftSites.forEach((fs, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 0.75rem; background: #ede9fe; border: 2px solid #8b5cf6; border-radius: 6px; margin-bottom: 0.5rem;';
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <strong style="color: #5b21b6;">Frameshift @ position ${fs.pos}</strong>
+                            <p style="font-size: 0.8rem; color: #6b21a8; margin-top: 0.25rem;">
+                                Frame ${fs.fromFrame} → Frame ${fs.toFrame} (${fs.shift > 0 ? '+' : ''}${fs.shift})
+                            </p>
+                        </div>
+                        <button onclick="removeFrameshift(${index})" style="background: #dc2626; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                            Remove
+                        </button>
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="font-size: 0.8rem; color: #6b21a8;">
+                            <input type="checkbox" ${fs.shift === -1 ? 'checked' : ''} onchange="toggleFrameshiftDirection(${index}, this.checked)" style="margin-right: 0.25rem;">
+                            -1 Frameshift (unchecked = +1)
+                        </label>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: #6b21a8;">Frameshift Probability: <span id="fs-prob-${index}">${(fs.probability * 100).toFixed(0)}%</span></label>
+                        <input type="range" min="0.01" max="0.99" step="0.01" value="${fs.probability}"
+                               onchange="updateFrameshiftProbability(${index}, this.value)"
+                               style="width: 100%; margin-top: 0.25rem;">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Add readthrough stop
+        window.addReadthrough = function(pos, frame, codon) {
+            console.log(`addReadthrough called: pos=${pos}, frame=${frame}, codon=${codon}`);
+
+            // Check if already exists
+            const existing = readthroughStops.find(rt => rt.pos === pos);
+            if (existing) {
+                console.log('Already exists, showing alert');
+                alert('This stop is already marked for readthrough');
+                return;
+            }
+
+            console.log('Adding to readthroughStops array');
+            readthroughStops.push({
+                pos: pos,
+                frame: frame,
+                codon: codon,
+                probability: 0.1 // Default 10% readthrough
+            });
+
+            console.log(`readthroughStops now has ${readthroughStops.length} items`);
+
+            renderReadthroughList();
+
+            // Just redraw to show the readthrough marker - don't recalculate translons
+            // User can manually add extended translons if needed by clicking starts
+            drawGraph();
+        };
+
+        // Remove readthrough stop
+        window.removeReadthrough = function(index) {
+            readthroughStops.splice(index, 1);
+            renderReadthroughList();
+            if (document.getElementById('auto-populate').checked) {
+                autoPopulateTranslons();
+            }
+            drawGraph();
+        };
+
+        // Update readthrough probability
+        window.updateReadthroughProbability = function(index, value) {
+            readthroughStops[index].probability = parseFloat(value);
+            document.getElementById(`rt-prob-${index}`).textContent = `${(value * 100).toFixed(0)}%`;
+            console.log(`Updated readthrough probability for stop at ${readthroughStops[index].pos} to ${value}`);
+            drawGraph();
+        };
+
+        // Click mode radio button handlers
+        const clickModeRadios = document.querySelectorAll('input[name="click-mode"]');
+        clickModeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const mode = e.target.value;
+                console.log(`Click mode changed to: ${mode}`);
+
+                // Update cursor based on mode
+                if (mode === 'frameshift') {
+                    canvas.style.cursor = 'crosshair';
+                } else if (mode === 'readthrough') {
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            });
+        });
+
+        // Remove frameshift site
+        window.removeFrameshift = function(index) {
+            frameshiftSites.splice(index, 1);
+            renderFrameshiftList();
+            drawGraph();
+        };
+
+        // Toggle frameshift direction
+        window.toggleFrameshiftDirection = function(index, isMinusOne) {
+            const fs = frameshiftSites[index];
+            const shift = isMinusOne ? -1 : +1;
+            fs.shift = shift;
+            const toFrame = (fs.pos + shift) % 3;
+            fs.toFrame = toFrame < 0 ? toFrame + 3 : toFrame;
+            renderFrameshiftList();
+            drawGraph();
+        };
+
+        // Update frameshift probability
+        window.updateFrameshiftProbability = function(index, value) {
+            frameshiftSites[index].probability = parseFloat(value);
+            document.getElementById(`fs-prob-${index}`).textContent = `${(value * 100).toFixed(0)}%`;
+            drawGraph();
+        };
+
         // Initial render
         renderControls();
         renderProducts();
@@ -3002,5 +3360,351 @@
         document.querySelector('.speed-btn[data-speed="1"]').style.color = 'white';
         document.querySelector('.speed-btn[data-speed="1"]').style.border = '2px solid #667eea';
     </script>
+
+    <!-- DOCUMENTATION SECTION -->
+    <div style="max-width: 1600px; margin: 2rem auto; background: rgba(255, 255, 255, 0.95); padding: 2rem; border-radius: 12px; color: #333;">
+        <h2 style="color: #667eea; font-size: 2rem; margin-bottom: 1.5rem;">Documentation & User Guide</h2>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Overview</h3>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            The Ribosome Decision Graph (RDG) is an interactive visualization tool for exploring alternative translation initiation in eukaryotic mRNAs.
+            It models how scanning ribosomes encounter multiple start codons and make probabilistic decisions to initiate or continue scanning,
+            ultimately producing diverse protein products (translons) from a single mRNA sequence.
+        </p>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">What is a Ribosome Decision Graph?</h3>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            The RDG is a directed graph that represents all possible translation paths through an mRNA:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Nodes:</strong> Decision points at each start codon where ribosomes choose to initiate or scan past</li>
+            <li><strong>Edges:</strong> Translation events (translons) from start to stop, or scanning events moving to the next decision point</li>
+            <li><strong>Probabilities:</strong> Each path has an associated probability based on start codon context (Kozak sequence, codon type, local structure)</li>
+            <li><strong>Outcomes:</strong> Final protein products with predicted relative abundances</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Getting Started</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Loading Sequences</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            You can load sequences in three ways:
+        </p>
+        <ol style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Manual Input:</strong> Paste any mRNA sequence (AUGC format) directly into the text area</li>
+            <li><strong>Gene Symbol:</strong> Enter a human gene symbol (e.g., ATF4, BRCA1, TP53) to fetch the canonical transcript from Ensembl</li>
+            <li><strong>Transcript ID:</strong> Enter a specific Ensembl transcript ID (e.g., ENST00000337304) for precise control</li>
+        </ol>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            Note: Fetched sequences are trimmed to the first 1500 nucleotides for optimal performance. This typically includes the full 5'UTR and initial coding region where most regulatory elements reside.
+        </p>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Understanding the Visualization</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            The RDG has two main view modes:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Tree View:</strong> Shows the complete decision tree with branching paths at each start codon
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Frame tracks (green, blue, orange) represent the three reading frames</li>
+                    <li>Circles indicate start codon positions (size = Kozak strength)</li>
+                    <li>Bars show translation events from start to stop</li>
+                    <li>Branch points show where ribosomes decide: initiate (go down) or scan past (continue right)</li>
+                    <li>Edge labels display probabilities and translon names (e.g., "T1 (45.2%)")</li>
+                </ul>
+            </li>
+            <li><strong>Flux View:</strong> Shows ribosome traffic through the sequence over time
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Animated ribosomes (colored circles) scan 5' to 3'</li>
+                    <li>Ribosome color indicates which frame they're aligned to</li>
+                    <li>Watch how ribosomes accumulate at strong start codons and how some scan past weak ones</li>
+                    <li>Use simulation speed controls (1x, 2x, 5x, 10x) to adjust animation</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Working with Translons</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Adding Translation Events</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            Translons are added automatically based on detected start codons, but you can also add them manually:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Click anywhere on the canvas to add a translon starting at that position</li>
+            <li>The tool finds the nearest downstream stop codon in the same frame</li>
+            <li>Initial probability is set based on Kozak sequence context</li>
+            <li>Fine-tune probability using the slider in the translon controls panel</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Translon Details</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            Click on any translon card to expand and view detailed information:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Position:</strong> Start and stop coordinates in the mRNA</li>
+            <li><strong>Frame:</strong> Reading frame (0, 1, or 2)</li>
+            <li><strong>ORF Length:</strong> Size of the open reading frame</li>
+            <li><strong>Start Codon:</strong> Actual codon sequence (AUG or near-cognate)</li>
+            <li><strong>Kozak Context:</strong> Flanking sequence and quality score
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Strong (≥0.7): Efficient initiation expected</li>
+                    <li>Moderate (0.4-0.7): Context-dependent initiation</li>
+                    <li>Weak (<0.4): Leaky scanning likely</li>
+                </ul>
+            </li>
+            <li><strong>GC Content:</strong> Local RNA structure indicator (high GC = potential structure)</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Adjusting Probabilities</h4>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            Each translon has an adjustable initiation probability (0-99%):
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Move the slider to change probability</li>
+            <li>The RDG updates in real-time to reflect your changes</li>
+            <li>Probabilities affect downstream translons - if 80% initiate at T1, only 20% are available for T2</li>
+            <li>Use this to test different biological scenarios and parameter sensitivities</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Understanding the RDG Model</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Translation Probability Calculation</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            The model calculates initiation probability at each start codon:
+        </p>
+        <code style="display: block; background: #f1f5f9; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; color: #1e293b;">
+            P<sub>init</sub> = P<sub>base</sub> × f<sub>Kozak</sub> × f<sub>codon</sub> × f<sub>structure</sub>
+        </code>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>P<sub>base</sub> (Base Probability):</strong> Fundamental initiation rate (default 0.3, adjustable in RDG Parameters)</li>
+            <li><strong>f<sub>Kozak</sub> (Kozak Factor):</strong> Context strength, 0.5-1.0 based on positions -3 and +4
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Optimal context: <code>gcc<strong>A/G</strong>ccAUG<strong>G</strong></code></li>
+                    <li>Position -3 = A or G: +0.5</li>
+                    <li>Position +4 = G: +0.5</li>
+                </ul>
+            </li>
+            <li><strong>f<sub>codon</sub> (Codon Factor):</strong> Codon type efficiency
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>AUG: 1.0 (100% efficiency)</li>
+                    <li>CUG, GUG, ACG, etc.: 0.1 (10% efficiency, adjustable via "Near-Cognate Penalty")</li>
+                </ul>
+            </li>
+            <li><strong>f<sub>structure</sub> (Structure Factor):</strong> Local secondary structure effect
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Based on GC content in 20nt window</li>
+                    <li>High GC (>50%) increases probability (structure may pause ribosomes)</li>
+                    <li>Effect controlled by "GC Bonus" parameter</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Adjustable Parameters</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            Fine-tune the model using the RDG Parameters section:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Base P (0.1-0.5):</strong> Baseline initiation probability - increase for generally higher initiation rates</li>
+            <li><strong>Near-Cognate Penalty (0.05-0.3):</strong> Non-AUG start efficiency - higher values make CUG/GUG more competitive</li>
+            <li><strong>GC Bonus (0.0-1.0):</strong> Structure-mediated enhancement - higher values make GC-rich regions favor initiation more</li>
+        </ul>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            Click "Apply to All Translons" after adjusting parameters to recalculate all probabilities with your new settings.
+        </p>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Reinitiation Model</h4>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            After translating a short upstream ORF (uORF), ribosomes may reinitiate downstream:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Reinitiation is more likely after short uORFs (<50 codons)</li>
+            <li>Probability decreases with uORF length (ribosomes lose factors during long translation)</li>
+            <li>The model shows reinitiation paths as branches continuing from stop codons</li>
+            <li>This explains how genes like ATF4 and GCN4 achieve stress-dependent upregulation</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Predicted Protein Products</h3>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            The Products panel shows all predicted proteins with:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Name:</strong> Translon identifier (T1, T2, etc.)</li>
+            <li><strong>Length:</strong> Protein length in amino acids (ORF nt ÷ 3)</li>
+            <li><strong>MW:</strong> Molecular weight in kDa (assuming 110 Da average per residue)</li>
+            <li><strong>Abundance:</strong> Relative amount (%) based on initiation probability
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Accounts for sequential depletion (if 80% initiate at T1, max 20% available for T2)</li>
+                    <li>Normalized so total across all products = 100%</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Interactive Features</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Simulation Controls</h4>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Play/Pause:</strong> Start/stop the ribosome scanning simulation (flux view)</li>
+            <li><strong>Clear:</strong> Remove all ribosomes from the simulation</li>
+            <li><strong>Speed Buttons:</strong> Adjust animation speed (1x, 2x, 5x, 10x)</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Naming & Export</h4>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Name This Analysis:</strong> Save your current RDG with a descriptive name for reference</li>
+            <li><strong>Export as Video:</strong> Record the canvas as a WebM video file (works best in flux view to capture animation)</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Practical Applications</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Studying Gene Regulation</h4>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>uORF-Mediated Regulation:</strong> Analyze genes like ATF4, ATF5, or GCN4 to understand how upstream ORFs control downstream translation</li>
+            <li><strong>Leaky Scanning:</strong> Compare strong vs. weak Kozak contexts to predict bypass efficiency</li>
+            <li><strong>Alternative Isoforms:</strong> Identify potential N-terminal variants from downstream start codons</li>
+            <li><strong>Near-Cognate Initiation:</strong> Detect non-AUG start sites that may produce functional proteins</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Optimizing Constructs</h4>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Reporter Design:</strong> Predict how 5'UTR sequences affect downstream reporter expression</li>
+            <li><strong>Expression Tuning:</strong> Test different Kozak sequences to optimize protein production</li>
+            <li><strong>Background Reduction:</strong> Identify and eliminate unintended start codons</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Best Practices & Tips</h3>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Start Simple:</strong> Load a well-characterized gene (e.g., ATF4) to understand the interface before analyzing your own sequences</li>
+            <li><strong>Focus on 5'UTR:</strong> Most alternative initiation happens in the first few hundred nucleotides - trimming sequences to ~1500 nt is usually sufficient</li>
+            <li><strong>Check Kozak Scores:</strong> Strong contexts (>0.7) are efficient initiation sites; weak contexts (<0.4) often permit leaky scanning</li>
+            <li><strong>Use Both Views:</strong> Tree view for understanding decision logic, flux view for visualizing ribosome dynamics</li>
+            <li><strong>Test Parameters:</strong> Adjust base probability and penalties to see how sensitive your predictions are to model assumptions</li>
+            <li><strong>Compare Variants:</strong> Load wild-type sequence, adjust one parameter or remove one uORF, and compare products</li>
+            <li><strong>Name Your Work:</strong> Use descriptive names (e.g., "ATF4 WT", "ATF4 uORF1-mut") when saving analyses</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Limitations & Considerations</h3>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Simplified Model:</strong> Real translation involves many factors not captured here including:
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>RNA secondary structure (only approximated via GC content)</li>
+                    <li>RNA-binding proteins and upstream ORF peptide effects</li>
+                    <li>Ribosome availability and initiation factor concentrations</li>
+                    <li>Context-specific regulation (cell type, stress conditions)</li>
+                </ul>
+            </li>
+            <li><strong>No Stop Readthrough:</strong> Model assumes all stop codons terminate translation (readthrough/suppression not implemented)</li>
+            <li><strong>No Frameshifting:</strong> Programmed ribosomal frameshifts are not currently supported</li>
+            <li><strong>Static Probabilities:</strong> Initiation probabilities are based on sequence alone, not dynamic cellular conditions</li>
+            <li><strong>Prediction Tool:</strong> Results are hypothetical - experimental validation (e.g., ribosome profiling, western blots) is essential</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Example Workflows</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Workflow 1: Analyzing ATF4 uORF Regulation</h4>
+        <ol style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Select "Gene Symbol" and enter "ATF4"</li>
+            <li>Click "Fetch Sequence" - loads canonical transcript 5'UTR</li>
+            <li>Switch to Tree View to see the complete RDG</li>
+            <li>Observe two main uORFs (uORF1 and uORF2) before the main ORF</li>
+            <li>Note that uORF1 is short - ribosomes likely reinitiate after translating it</li>
+            <li>uORF2 overlaps with the main ORF start - creates competing initiation</li>
+            <li>Under normal conditions (adjust base P to ~0.3), uORF2 captures most ribosomes, limiting main ORF translation</li>
+            <li>Simulate stress (increase base P to ~0.4-0.5) - more ribosomes initiate at uORF1, fewer reach uORF2, more reinitiate at main ORF</li>
+            <li>This explains ATF4's paradoxical stress-induced upregulation</li>
+        </ol>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Workflow 2: Optimizing a Reporter Construct</h4>
+        <ol style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Paste your 5'UTR + reporter ORF sequence</li>
+            <li>Review all detected start codons in the sequence</li>
+            <li>Identify any upstream start codons that might compete with your reporter</li>
+            <li>Check their Kozak scores - strong contexts (>0.7) may significantly reduce reporter expression</li>
+            <li>Consider mutating problematic uORFs (change AUG to AAG) or adjusting Kozak context</li>
+            <li>Use the abundance predictions to estimate reporter yield</li>
+            <li>For dual luciferase reporters, see the Western Blot demo for protein product predictions</li>
+        </ol>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Technical Details</h3>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Reading Frame Color Coding</h4>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Frame 0 (Green):</strong> Positions 0, 3, 6, 9... (divisible by 3)</li>
+            <li><strong>Frame 1 (Blue):</strong> Positions 1, 4, 7, 10... (remainder 1 when divided by 3)</li>
+            <li><strong>Frame 2 (Orange):</strong> Positions 2, 5, 8, 11... (remainder 2 when divided by 3)</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Start Codon Detection</h4>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            The tool automatically detects:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>AUG:</strong> Standard methionine start codon</li>
+            <li><strong>Near-cognates:</strong> CUG (Leu), GUG (Val), ACG (Thr), AUU (Ile), AUC (Ile), AUA (Ile) - all shown but with reduced efficiency</li>
+        </ul>
+
+        <h4 style="color: #555; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem;">Abundance Calculation</h4>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            Product abundance accounts for sequential ribosome depletion:
+        </p>
+        <code style="display: block; background: #f1f5f9; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.9rem;">
+            Available ribosomes = 100%<br>
+            T1 initiates at 45% → produces 45% T1, leaves 55% available<br>
+            T2 initiates at 60% of remaining → produces 33% T2 (0.55 × 0.60), leaves 22% available<br>
+            T3 initiates at 80% of remaining → produces 17.6% T3 (0.22 × 0.80), leaves 4.4% available
+        </code>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Shared Code Architecture</h3>
+        <p style="line-height: 1.6; margin-bottom: 0.5rem; color: #555;">
+            This tool uses modular JavaScript libraries:
+        </p>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>rdg-engine.js:</strong> Core calculation engine
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Start codon detection</li>
+                    <li>Kozak scoring</li>
+                    <li>Probability calculations</li>
+                    <li>Stop codon finding</li>
+                    <li>Protein product prediction</li>
+                </ul>
+            </li>
+            <li><strong>rdg-viz.js:</strong> Visualization layer
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Tree layout algorithm</li>
+                    <li>Canvas rendering</li>
+                    <li>Construct suggestions</li>
+                </ul>
+            </li>
+        </ul>
+        <p style="line-height: 1.6; margin-bottom: 1rem; color: #555;">
+            These modules are shared with the Western Blot demo for consistent behavior and easier maintenance.
+        </p>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Related Tools</h3>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li><strong>Western Blot Demo:</strong> Use the same RDG model to predict protein products from reporter constructs and visualize them as gel bands</li>
+            <li><strong>Ribosome Profiling:</strong> Compare RDG predictions with experimental ribosome profiling data to validate and refine the model</li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Further Reading</h3>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
+            <li>Kozak M. (1987) An analysis of 5'-noncoding sequences from 699 vertebrate messenger RNAs. <em>Nucleic Acids Res</em></li>
+            <li>Kozak M. (2002) Pushing the limits of the scanning mechanism for initiation of translation. <em>Gene</em></li>
+            <li>Hinnebusch AG. (2011) Molecular mechanism of scanning and start codon selection in eukaryotes. <em>Microbiol Mol Biol Rev</em></li>
+            <li>Ingolia NT et al. (2009) Genome-wide analysis in vivo of translation with nucleotide resolution using ribosome profiling. <em>Science</em></li>
+            <li>Vattem KM & Wek RC. (2004) Reinitiation involving upstream ORFs regulates ATF4 mRNA translation in mammalian cells. <em>PNAS</em></li>
+            <li>Young SK & Wek RC. (2016) Upstream open reading frames differentially regulate gene-specific translation in the integrated stress response. <em>J Biol Chem</em></li>
+        </ul>
+
+        <h3 style="color: #333; font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem;">Glossary</h3>
+        <ul style="line-height: 1.8; margin-left: 1.5rem; color: #555;">
+            <li><strong>Translon:</strong> A translation event producing a specific protein isoform from a particular start-stop codon pair</li>
+            <li><strong>uORF (upstream ORF):</strong> Short open reading frame in the 5'UTR that can regulate downstream translation</li>
+            <li><strong>Kozak Sequence:</strong> Nucleotide context surrounding a start codon that affects initiation efficiency</li>
+            <li><strong>Leaky Scanning:</strong> Process where ribosomes bypass a start codon and continue scanning downstream</li>
+            <li><strong>Reinitiation:</strong> Resumption of scanning and translation after terminating a short uORF</li>
+            <li><strong>Near-Cognate Codon:</strong> Non-AUG codon (e.g., CUG, GUG) that can initiate translation at reduced efficiency</li>
+            <li><strong>Reading Frame:</strong> One of three possible ways to read a sequence as triplet codons (frames 0, 1, 2)</li>
+            <li><strong>ORF (Open Reading Frame):</strong> Sequence from a start codon to a stop codon without internal stops</li>
+        </ul>
+    </div>
 </body>
 </html>
