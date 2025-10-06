@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In Silico Western Blot - Reporter Construct Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #fff;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        /* Main sections */
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        .section h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #555;
+        }
+
+        /* Sequence input */
+        .sequence-input label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+
+        .sequence-input textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        .sequence-input small {
+            display: block;
+            margin-top: 0.5rem;
+            color: #64748b;
+        }
+
+        /* Buttons */
+        .primary-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-top: 0.75rem;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .secondary-btn {
+            background: #f8fafc;
+            color: #64748b;
+            border: 2px solid #e2e8f0;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .secondary-btn:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+
+        /* Construct builder */
+        .construct-regions {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .region-item {
+            display: grid;
+            grid-template-columns: 150px 1fr auto auto;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .region-item label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .region-item input {
+            padding: 0.5rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .region-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .region-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            border: 2px solid #cbd5e1;
+        }
+
+        /* RDG canvas */
+        .rdg-container {
+            margin-top: 1.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        #rdg-canvas {
+            width: 100%;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+        }
+
+        /* Western blot */
+        .western-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .gel-canvas-container {
+            background: #1a1a1a;
+            padding: 2rem;
+            border-radius: 8px;
+        }
+
+        #gel-canvas {
+            width: 100%;
+            border-radius: 4px;
+        }
+
+        .band-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .band-table th,
+        .band-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .band-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .band-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .reporter-tag {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+        }
+
+        /* Mutation interface */
+        .mutation-list {
+            margin-top: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .mutation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #f8fafc;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .mutation-item code {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+        }
+
+        /* Status messages */
+        .status-message {
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../" class="back-link">← Back to Home</a>
+
+        <h1>In Silico Western Blot</h1>
+        <p class="subtitle">Design reporter constructs and predict protein products based on translation regulation</p>
+
+        <!-- SECTION 1: Sequence Input -->
+        <div class="section">
+            <h2>1. Sequence Input</h2>
+
+            <div class="sequence-input">
+                <label>Sequence Source</label>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="input_type" value="manual" id="radioManual" checked>
+                            <span>Manual Input</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="input_type" value="symbol" id="radioSymbol">
+                            <span>Gene Symbol (e.g., ATF4, HIF1A)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="input_type" value="transcript" id="radioTranscript">
+                            <span>Transcript ID (e.g., ENST...)</span>
+                        </label>
+                    </div>
+
+                    <div id="ensemblLookup" style="display: none; margin-bottom: 0.75rem;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" id="geneInput" placeholder="e.g., ATF4 or ENST00000337304"
+                                   style="flex: 1; padding: 0.5rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                            <button id="fetchButton" class="primary-btn" style="width: auto; padding: 0.5rem 1rem; margin: 0;">
+                                Fetch Sequence
+                            </button>
+                        </div>
+                        <p id="statusMessage" style="margin-top: 0.5rem; font-size: 0.85rem; color: #667eea; min-height: 1.2rem;"></p>
+                    </div>
+                </div>
+
+                <label for="sequence">mRNA Sequence</label>
+                <textarea id="sequence" rows="6" placeholder="Paste mRNA sequence (AUGC format)"></textarea>
+                <small>Paste or fetch a sequence, then mark reporter regions below</small>
+            </div>
+
+            <button class="primary-btn" id="load-seq-btn">Load Sequence</button>
+        </div>
+
+        <!-- SECTION 2: Construct Builder + RDG -->
+        <div class="section" id="construct-section" style="display: none;">
+            <h2>2. Construct Design & Analysis</h2>
+
+            <h3>Define Reporter Regions</h3>
+            <p style="color: #64748b; margin-bottom: 1rem;">Mark regions of your sequence as different construct components</p>
+
+            <div class="construct-regions" id="construct-regions">
+                <!-- Will be populated with region inputs -->
+            </div>
+
+            <button class="secondary-btn" id="add-region-btn" style="margin-top: 1rem;">+ Add Region</button>
+            <button class="primary-btn" id="analyze-construct-btn">Analyze Construct</button>
+
+            <div id="rdg-container" class="rdg-container" style="display: none;">
+                <h3>Translation Initiation Sites (RDG)</h3>
+                <canvas id="rdg-canvas" width="1200" height="600"></canvas>
+
+                <h3>Modify Start Codons</h3>
+                <p style="color: #64748b; margin-bottom: 0.5rem;">Mutate start codons to test effects on translation</p>
+                <div id="mutation-list" class="mutation-list">
+                    <!-- Will be populated with mutation controls -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Western Blot Output -->
+        <div class="section" id="western-section" style="display: none;">
+            <h2>3. Predicted Western Blot</h2>
+
+            <div class="western-container">
+                <div class="gel-canvas-container">
+                    <canvas id="gel-canvas" width="300" height="500"></canvas>
+                </div>
+
+                <div>
+                    <h3>Predicted Protein Products</h3>
+                    <table class="band-table" id="band-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Reporters</th>
+                                <th>MW (kDa)</th>
+                                <th>Relative Abundance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="band-table-body">
+                            <!-- Will be populated with band data -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load shared RDG calculation engine -->
+    <script src="../shared/rdg-engine.js"></script>
+
+    <script>
+        // ====================================================================
+        // STATE MANAGEMENT
+        // ====================================================================
+
+        let sequence = '';
+        let startCodons = [];
+        let constructRegions = [];
+        let translons = [];
+        let mutations = {}; // {position: 'mutated_codon'}
+
+        // ====================================================================
+        // ENSEMBL API (copied from RDG demo)
+        // ====================================================================
+
+        const ENSEMBL_SERVER = "https://rest.ensembl.org";
+        const SPECIES_NAME = "homo_sapiens";
+
+        async function lookupCanonicalId(geneSymbol) {
+            const url = `${ENSEMBL_SERVER}/lookup/symbol/${SPECIES_NAME}/${geneSymbol}`;
+            const response = await fetch(url, {
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Gene symbol '${geneSymbol}' not found`);
+            }
+
+            const data = await response.json();
+
+            if (!data.canonical_transcript) {
+                throw new Error(`No canonical transcript found for ${geneSymbol}`);
+            }
+
+            return data.canonical_transcript;
+        }
+
+        async function fetchEnsemblSequence(transcriptId) {
+            // Strip version number if present
+            const cleanId = transcriptId.split('.')[0];
+
+            const url = `${ENSEMBL_SERVER}/sequence/id/${cleanId}?type=cdna`;
+            const response = await fetch(url, {
+                headers: { "Content-Type": "text/x-fasta" }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Transcript '${cleanId}' not found`);
+            }
+
+            const fasta = await response.text();
+
+            // Strip FASTA header and whitespace
+            const seq = fasta.split('\n')
+                .filter(line => !line.startsWith('>'))
+                .join('')
+                .toUpperCase()
+                .replace(/\s/g, '')
+                .replace(/T/g, 'U'); // Convert DNA to RNA
+
+            return seq;
+        }
+
+        async function processIdentifier() {
+            const input = document.getElementById('geneInput').value.trim();
+            const isSymbol = document.getElementById('radioSymbol').checked;
+            const statusMsg = document.getElementById('statusMessage');
+            const sequenceArea = document.getElementById('sequence');
+            const fetchBtn = document.getElementById('fetchButton');
+
+            if (!input) {
+                statusMsg.textContent = "Please enter a gene symbol or transcript ID";
+                statusMsg.style.color = '#ef4444';
+                return;
+            }
+
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Fetching...';
+            statusMsg.style.color = '#667eea';
+
+            try {
+                let transcriptId = input;
+
+                if (isSymbol) {
+                    statusMsg.textContent = `Looking up gene ${input}...`;
+                    transcriptId = await lookupCanonicalId(input);
+                    statusMsg.textContent = `Found canonical transcript: ${transcriptId}`;
+                }
+
+                statusMsg.textContent = `Fetching cDNA sequence for ${transcriptId}...`;
+                const fullSequence = await fetchEnsemblSequence(transcriptId);
+
+                // Use first 1500nt for demo (full sequences can be very long)
+                const trimmedSeq = fullSequence.substring(0, 1500);
+                sequenceArea.value = trimmedSeq;
+
+                statusMsg.textContent = `✓ Sequence loaded (${fullSequence.length}nt total, showing first 1500nt)`;
+                statusMsg.style.color = '#10b981';
+
+            } catch (error) {
+                statusMsg.textContent = `Error: ${error.message}`;
+                statusMsg.style.color = '#ef4444';
+                console.error('Ensembl API error:', error);
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = 'Fetch Sequence';
+            }
+        }
+
+        // ====================================================================
+        // SEQUENCE LOADING
+        // ====================================================================
+
+        document.getElementById('load-seq-btn').addEventListener('click', () => {
+            const input = document.getElementById('sequence').value.trim().toUpperCase();
+
+            if (!input) {
+                alert('Please enter a sequence');
+                return;
+            }
+
+            // Clean sequence
+            sequence = input.replace(/\s/g, '').replace(/T/g, 'U');
+
+            // Validate
+            if (!/^[AUGC]+$/.test(sequence)) {
+                alert('Invalid sequence. Only AUGC characters allowed.');
+                return;
+            }
+
+            // Find all start codons using shared RDG engine
+            startCodons = RDGEngine.findStartCodons(sequence);
+
+            // Show construct section
+            document.getElementById('construct-section').style.display = 'block';
+
+            // Initialize default regions
+            initializeDefaultRegions();
+
+            document.getElementById('load-seq-btn').textContent = `✓ Loaded (${sequence.length}nt, ${startCodons.length} start codons)`;
+            setTimeout(() => {
+                document.getElementById('load-seq-btn').textContent = 'Load Sequence';
+            }, 3000);
+        });
+
+        // ====================================================================
+        // CONSTRUCT BUILDER
+        // ====================================================================
+
+        const REGION_COLORS = {
+            '5UTR': '#10b981',
+            'RLUC': '#3b82f6',
+            'LINKER': '#f59e0b',
+            'FLUC': '#ef4444',
+            '3UTR': '#8b5cf6',
+            'CUSTOM': '#64748b'
+        };
+
+        function initializeDefaultRegions() {
+            constructRegions = [
+                { name: '5UTR', type: '5UTR', start: 1, end: Math.min(200, sequence.length), color: REGION_COLORS['5UTR'] }
+            ];
+
+            if (sequence.length > 200) {
+                constructRegions.push({ name: 'Renilla Luciferase', type: 'RLUC', start: 201, end: Math.min(1200, sequence.length), color: REGION_COLORS['RLUC'] });
+            }
+
+            renderConstructRegions();
+        }
+
+        function renderConstructRegions() {
+            const container = document.getElementById('construct-regions');
+            container.innerHTML = '';
+
+            constructRegions.forEach((region, index) => {
+                const item = document.createElement('div');
+                item.className = 'region-item';
+                item.innerHTML = `
+                    <select onchange="updateRegionType(${index}, this.value)">
+                        <option value="5UTR" ${region.type === '5UTR' ? 'selected' : ''}>5' UTR</option>
+                        <option value="RLUC" ${region.type === 'RLUC' ? 'selected' : ''}>Renilla Luc</option>
+                        <option value="LINKER" ${region.type === 'LINKER' ? 'selected' : ''}>Linker</option>
+                        <option value="FLUC" ${region.type === 'FLUC' ? 'selected' : ''}>Firefly Luc</option>
+                        <option value="3UTR" ${region.type === '3UTR' ? 'selected' : ''}>3' UTR</option>
+                        <option value="CUSTOM" ${region.type === 'CUSTOM' ? 'selected' : ''}>Custom</option>
+                    </select>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="number" value="${region.start}" min="1" max="${sequence.length}"
+                               onchange="updateRegionBounds(${index}, 'start', parseInt(this.value))"
+                               style="width: 80px;">
+                        <span>to</span>
+                        <input type="number" value="${region.end}" min="1" max="${sequence.length}"
+                               onchange="updateRegionBounds(${index}, 'end', parseInt(this.value))"
+                               style="width: 80px;">
+                    </div>
+                    <div class="region-color" style="background: ${region.color};"></div>
+                    <button class="secondary-btn" onclick="removeRegion(${index})" style="padding: 0.5rem;">✕</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        window.updateRegionType = function(index, type) {
+            constructRegions[index].type = type;
+            constructRegions[index].color = REGION_COLORS[type];
+            renderConstructRegions();
+        };
+
+        window.updateRegionBounds = function(index, field, value) {
+            constructRegions[index][field] = value;
+        };
+
+        window.removeRegion = function(index) {
+            constructRegions.splice(index, 1);
+            renderConstructRegions();
+        };
+
+        document.getElementById('add-region-btn').addEventListener('click', () => {
+            const lastRegion = constructRegions[constructRegions.length - 1];
+            const newStart = lastRegion ? lastRegion.end + 1 : 1;
+            const newEnd = Math.min(newStart + 100, sequence.length);
+
+            constructRegions.push({
+                name: 'Custom Region',
+                type: 'CUSTOM',
+                start: newStart,
+                end: newEnd,
+                color: REGION_COLORS['CUSTOM']
+            });
+
+            renderConstructRegions();
+        });
+
+        // ====================================================================
+        // RDG ANALYSIS
+        // ====================================================================
+
+        document.getElementById('analyze-construct-btn').addEventListener('click', () => {
+            analyzeConstruct();
+        });
+
+        function analyzeConstruct() {
+            // Apply mutations to sequence
+            let workingSequence = sequence;
+            for (const [pos, mut] of Object.entries(mutations)) {
+                const p = parseInt(pos);
+                workingSequence = workingSequence.substring(0, p) + mut + workingSequence.substring(p + 3);
+            }
+
+            // Find start codons in mutated sequence
+            startCodons = RDGEngine.findStartCodons(workingSequence);
+
+            // Create translons (select top start codons by probability)
+            translons = [];
+            startCodons.forEach((start, index) => {
+                const prob = RDGEngine.calculateInitiationProbability(
+                    start.codon,
+                    start.kozakScore,
+                    start.gcContent
+                );
+
+                translons.push({
+                    name: `T${index + 1}`,
+                    startNt: start.pos,
+                    endNt: start.stopPos,
+                    frame: start.frame,
+                    codon: start.codon,
+                    probability: prob,
+                    orfLength: start.orfLength
+                });
+            });
+
+            // Sort by probability and take top 8
+            translons.sort((a, b) => b.probability - a.probability);
+            translons = translons.slice(0, 8);
+
+            // Show RDG visualization
+            document.getElementById('rdg-container').style.display = 'block';
+            drawRDG();
+
+            // Render mutation controls
+            renderMutationControls();
+
+            // Generate western blot
+            generateWesternBlot();
+
+            // Show western section
+            document.getElementById('western-section').style.display = 'block';
+        }
+
+        // ====================================================================
+        // RDG VISUALIZATION (simplified from main demo)
+        // ====================================================================
+
+        const canvas = document.getElementById('rdg-canvas');
+        const ctx = canvas.getContext('2d');
+        const FRAME_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
+
+        function drawRDG() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const margin = 50;
+            const seqWidth = canvas.width - 2 * margin;
+            const ntToX = (nt) => margin + (nt / sequence.length) * seqWidth;
+
+            // Draw construct regions
+            constructRegions.forEach(region => {
+                const x1 = ntToX(region.start - 1);
+                const x2 = ntToX(region.end);
+
+                ctx.fillStyle = region.color;
+                ctx.globalAlpha = 0.2;
+                ctx.fillRect(x1, 20, x2 - x1, 40);
+                ctx.globalAlpha = 1;
+
+                ctx.strokeStyle = region.color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1, 20, x2 - x1, 40);
+
+                // Label
+                ctx.fillStyle = region.color;
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(region.type, (x1 + x2) / 2, 50);
+            });
+
+            // Draw translons as bars
+            const startY = 100;
+            translons.forEach((t, i) => {
+                const y = startY + i * 60;
+                const x1 = ntToX(t.startNt);
+                const x2 = ntToX(t.endNt);
+
+                // Bar
+                ctx.fillStyle = FRAME_COLORS[t.frame];
+                ctx.globalAlpha = 0.3;
+                ctx.fillRect(x1, y - 20, x2 - x1, 40);
+                ctx.globalAlpha = 1;
+
+                ctx.strokeStyle = FRAME_COLORS[t.frame];
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y - 20, x2 - x1, 40);
+
+                // Label
+                ctx.fillStyle = FRAME_COLORS[t.frame];
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${t.codon} @ ${t.startNt} (P=${(t.probability * 100).toFixed(1)}%)`, x1 + 5, y);
+            });
+        }
+
+        // ====================================================================
+        // MUTATION CONTROLS
+        // ====================================================================
+
+        function renderMutationControls() {
+            const container = document.getElementById('mutation-list');
+            container.innerHTML = '';
+
+            startCodons.forEach(start => {
+                if (!start.isAUG && start.codon !== 'AUG') return; // Only show AUGs
+
+                const item = document.createElement('div');
+                item.className = 'mutation-item';
+
+                const isMutated = mutations[start.pos];
+                const displayCodon = isMutated || start.codon;
+
+                item.innerHTML = `
+                    <div>
+                        <code>Position ${start.pos}: ${displayCodon}</code>
+                        <span style="margin-left: 1rem; color: #64748b;">Kozak: ${start.kozakScore.toFixed(2)}</span>
+                    </div>
+                    <button class="secondary-btn" onclick="toggleMutation(${start.pos}, '${start.codon}')" style="padding: 0.4rem 0.8rem;">
+                        ${isMutated ? 'Restore' : 'Mutate → AAG'}
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        window.toggleMutation = function(pos, originalCodon) {
+            if (mutations[pos]) {
+                delete mutations[pos];
+            } else {
+                mutations[pos] = 'AAG'; // Disable start codon
+            }
+
+            analyzeConstruct(); // Re-analyze
+        };
+
+        // ====================================================================
+        // WESTERN BLOT GENERATION
+        // ====================================================================
+
+        function generateWesternBlot() {
+            // Predict protein products using RDG engine
+            const constructMap = {};
+            constructRegions.forEach(region => {
+                constructMap[region.type] = { start: region.start - 1, end: region.end };
+            });
+
+            const products = RDGEngine.predictProteinProducts(translons, constructMap);
+
+            // Draw gel
+            drawGel(products);
+
+            // Update table
+            updateBandTable(products);
+        }
+
+        function drawGel(products) {
+            const gelCanvas = document.getElementById('gel-canvas');
+            const gCtx = gelCanvas.getContext('2d');
+
+            // Clear and draw gel background
+            gCtx.fillStyle = '#1a1a1a';
+            gCtx.fillRect(0, 0, gelCanvas.width, gelCanvas.height);
+
+            // Draw lane
+            const laneX = gelCanvas.width / 2;
+            const laneWidth = 80;
+            gCtx.fillStyle = '#2d2d2d';
+            gCtx.fillRect(laneX - laneWidth/2, 50, laneWidth, gelCanvas.height - 100);
+
+            // MW markers on left
+            const mwMarkers = [200, 150, 100, 75, 50, 37, 25, 20, 15, 10];
+            gCtx.fillStyle = '#999';
+            gCtx.font = '11px sans-serif';
+            gCtx.textAlign = 'right';
+
+            const gelHeight = gelCanvas.height - 100;
+            const maxMW = 200;
+            const minMW = 10;
+
+            mwMarkers.forEach(mw => {
+                const fraction = (Math.log(mw) - Math.log(minMW)) / (Math.log(maxMW) - Math.log(minMW));
+                const y = 50 + gelHeight * (1 - fraction);
+
+                gCtx.fillText(`${mw}`, laneX - laneWidth/2 - 10, y + 4);
+                gCtx.fillStyle = '#555';
+                gCtx.fillRect(laneX - laneWidth/2 - 5, y, 5, 1);
+                gCtx.fillStyle = '#999';
+            });
+
+            // Draw bands
+            products.forEach(product => {
+                const mw = product.mw;
+                const fraction = (Math.log(mw) - Math.log(minMW)) / (Math.log(maxMW) - Math.log(minMW));
+                const y = 50 + gelHeight * (1 - fraction);
+
+                // Band intensity based on abundance
+                const intensity = Math.min(255, product.abundance * 400);
+                gCtx.fillStyle = `rgba(255, 255, 255, ${intensity / 255})`;
+                const bandHeight = 8;
+                gCtx.fillRect(laneX - laneWidth/2 + 5, y - bandHeight/2, laneWidth - 10, bandHeight);
+
+                // Add slight glow
+                gCtx.shadowBlur = 10;
+                gCtx.shadowColor = 'white';
+                gCtx.fillRect(laneX - laneWidth/2 + 5, y - bandHeight/2, laneWidth - 10, bandHeight);
+                gCtx.shadowBlur = 0;
+            });
+
+            // Label
+            gCtx.fillStyle = '#999';
+            gCtx.font = 'bold 12px sans-serif';
+            gCtx.textAlign = 'center';
+            gCtx.fillText('Sample', laneX, gelCanvas.height - 20);
+        }
+
+        function updateBandTable(products) {
+            const tbody = document.getElementById('band-table-body');
+            tbody.innerHTML = '';
+
+            products.forEach(product => {
+                const row = document.createElement('tr');
+
+                const reporterTags = product.reporters.map(r =>
+                    `<span class="reporter-tag">${r}</span>`
+                ).join('');
+
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${reporterTags || '<em>Unknown</em>'}</td>
+                    <td>${product.mw.toFixed(1)}</td>
+                    <td>${(product.abundance * 100).toFixed(1)}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ====================================================================
+        // EVENT LISTENERS
+        // ====================================================================
+
+        document.getElementById('fetchButton').addEventListener('click', processIdentifier);
+
+        document.getElementById('geneInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                processIdentifier();
+            }
+        });
+
+        document.querySelectorAll('input[name="input_type"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                const ensemblLookup = document.getElementById('ensemblLookup');
+                const isManual = document.getElementById('radioManual').checked;
+
+                if (isManual) {
+                    ensemblLookup.style.display = 'none';
+                } else {
+                    ensemblLookup.style.display = 'block';
+                    const geneInput = document.getElementById('geneInput');
+                    if (document.getElementById('radioSymbol').checked) {
+                        geneInput.placeholder = 'e.g., ATF4, HIF1A, GCN4';
+                    } else {
+                        geneInput.placeholder = 'e.g., ENST00000337304';
+                    }
+                }
+
+                document.getElementById('statusMessage').textContent = '';
+            });
+        });
+
+    </script>
+</body>
+</html>
