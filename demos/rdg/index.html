@@ -160,7 +160,7 @@
             gap: 0.75rem;
             align-items: center;
             justify-content: space-between;
-            margin-top: 1rem;
+            margin: 0 0 1rem 0;
             padding: 0.75rem;
             background: #f8fafc;
             border-radius: 8px;
@@ -687,12 +687,6 @@
         <div class="main-content">
             <div class="left-panel">
                 <div class="visualization">
-                    <div class="canvas-container">
-                        <canvas id="rdg-canvas"></canvas>
-                    </div>
-                    <div class="hint">
-                        💡 Click on start codons (green markers) to add translons
-                    </div>
                     <div class="viz-controls">
                         <div class="legend">
                             <div class="legend-item">
@@ -728,6 +722,12 @@
                             <button class="secondary-btn speed-btn" data-speed="5" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">5x</button>
                             <button class="secondary-btn speed-btn" data-speed="10" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">10x</button>
                         </div>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="rdg-canvas"></canvas>
+                    </div>
+                    <div class="hint">
+                        💡 Click on start codons (green markers) to add translons
                     </div>
                 </div>
 
@@ -1009,6 +1009,10 @@
     <!-- Load shared RDG modules -->
     <script src="../shared/rdg-engine.js"></script>
     <script src="../shared/rdg-viz.js"></script>
+    <script>
+      // Prefer frame-colored mode + ORF bars in standalone RDG demo
+      window.RDGVizConfig = { mode: 'frames', showOrfBarsOnFrames: true };
+    </script>
 
     <script>
         // Ensembl API Configuration

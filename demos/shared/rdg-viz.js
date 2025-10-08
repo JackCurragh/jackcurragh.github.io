@@ -303,6 +303,28 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
     console.log(`[drawTreeLayout] VERSION 2.0 - Called with ${readthroughStops.length} readthrough stops`);
     console.log(`[drawTreeLayout] Readthrough stops:`, readthroughStops);
 
+    // Config (supports accessibility/color modes)
+    const getConfig = () => (typeof window !== 'undefined' && window.RDGVizConfig) ? window.RDGVizConfig : { mode: 'accessibility' };
+    const cfg = getConfig();
+
+    // Palette (construct blocks)
+    const colorForType = (type) => {
+        if (!type) return '#64748b';
+        if (typeof type === 'string' && type.startsWith('RLUC')) return '#2563EB'; // blue-600
+        switch (type) {
+            case 'FLUC': return '#DC2626'; // red-600
+            case 'LINKER': return '#F59E0B'; // amber-500
+            case '5UTR': return '#94A3B8'; // slate-300 (context)
+            case '3UTR': return '#CBD5E1'; // slate-200 (context)
+            case 'CUSTOM': return '#6B7280'; // grey-500
+            default: return '#64748b';
+        }
+    };
+    const baseTranslonColor = cfg.mode === 'frames' ? null : '#475569'; // slate-600
+    const railFill = cfg.mode === 'frames' ? null : '#E5E7EB'; // gray-200
+    const railStroke = cfg.mode === 'frames' ? null : '#CBD5E1'; // gray-300
+    const showOrfBarsOnFrames = !!cfg.showOrfBarsOnFrames;
+
     const margin = 50;
     const seqEndX = canvas.width - margin;
     const ntToPixel = (nt) => margin + (nt / sequence.length) * (seqEndX - margin);
@@ -315,80 +337,73 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
     const { nodes, edges } = result;
     console.log(`[drawTreeLayout] calculateTreeLayout returned ${nodes.length} nodes and ${edges.length} edges`);
 
+    // Ensure canvas is tall enough for all nodes/edges
+    let maxY = 0;
+    nodes.forEach(n => { if (n.y > maxY) maxY = n.y; });
+    edges.forEach(e => { maxY = Math.max(maxY, e.y1 || 0, e.y2 || 0); });
+    const neededH = Math.max(400, Math.ceil(maxY + 80));
+    if (canvas.height < neededH) {
+        canvas.height = neededH;
+    }
+
+    // Frame rail Y positions (padding under construct bar)
+    const railsY = [90, 120, 150];
+
+    // Highlight sets (global, optional)
+    const hiKeys = (typeof window !== 'undefined' && window.RDG_HIGHLIGHT_KEYS) ? window.RDG_HIGHLIGHT_KEYS : null;
+    const hiReporters = (typeof window !== 'undefined' && window.RDG_HIGHLIGHT_REPORTERS) ? window.RDG_HIGHLIGHT_REPORTERS : null;
+
     // Draw construct regions if provided
     if (constructRegions && constructRegions.length > 0) {
         constructRegions.forEach(region => {
-            const x1 = ntToPixel(region.start - 1);
-            const x2 = ntToPixel(region.end);
+            const rStartNt = region.assembled ? region.start : (region.start - 1);
+            const rEndNt = region.end;
+            const x1 = ntToPixel(rStartNt);
+            const x2 = ntToPixel(rEndNt);
+            const regionColor = region.color || colorForType(region.type);
 
             // Draw on top bar
-            ctx.fillStyle = region.color;
+            ctx.fillStyle = regionColor;
             ctx.globalAlpha = 0.15;
             ctx.fillRect(x1, 20, x2 - x1, 40);
             ctx.globalAlpha = 1;
 
-            ctx.strokeStyle = region.color;
+            ctx.strokeStyle = regionColor;
             ctx.lineWidth = 2;
             ctx.strokeRect(x1, 20, x2 - x1, 40);
 
-            ctx.fillStyle = region.color;
+            // Highlight entire reporter block if requested
+            if (hiReporters && hiReporters.has(region.type)) {
+                ctx.save();
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 4;
+                ctx.globalAlpha = 0.9;
+                ctx.strokeRect(x1 - 2, 18, (x2 - x1) + 4, 44);
+                ctx.restore();
+            }
+
+            ctx.fillStyle = regionColor;
             ctx.font = 'bold 10px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(region.type, (x1 + x2) / 2, 50);
 
-            // If it's a reporter (RLUC or FLUC), draw the ORF on the appropriate frame track
-            if (region.type === 'RLUC' || region.type === 'FLUC') {
-                const frame = (region.start - 1) % 3; // Calculate reading frame
-                const frameY = [80, 110, 140][frame];
-
-                // Draw thicker bar on the frame track to show reporter ORF
-                ctx.fillStyle = region.color;
-                ctx.globalAlpha = 0.4;
-                ctx.fillRect(x1, frameY - 10, x2 - x1, 20);
+            // Optional: ORF bar on frame track (off by default in accessibility mode)
+            if (showOrfBarsOnFrames && (region.type === 'RLUC' || region.type === 'RLUC_WEAK' || region.type === 'RLUC_NO_STOP' || region.type === 'FLUC')) {
+                const frameIdx = (rStartNt) % 3;
+                const y = railsY[frameIdx];
+                ctx.fillStyle = regionColor;
+                ctx.globalAlpha = 0.35;
+                ctx.fillRect(x1, y - 10, x2 - x1, 20);
                 ctx.globalAlpha = 1;
-
-                ctx.strokeStyle = region.color;
+                ctx.strokeStyle = regionColor;
                 ctx.lineWidth = 3;
-                ctx.strokeRect(x1, frameY - 10, x2 - x1, 20);
-
-                // Add label with frame info
-                ctx.fillStyle = region.color;
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                const labelText = `${region.type} (Frame ${frame})`;
-                ctx.fillText(labelText, (x1 + x2) / 2, frameY - 15);
-
-                // Add start/stop markers for the reporter ORF
-                ctx.strokeStyle = region.color;
-                ctx.lineWidth = 2;
-                ctx.setLineDash([]);
-
-                // Start marker
-                ctx.beginPath();
-                ctx.moveTo(x1, frameY - 12);
-                ctx.lineTo(x1, frameY + 12);
-                ctx.stroke();
-
-                // Stop marker
-                ctx.beginPath();
-                ctx.moveTo(x2, frameY - 12);
-                ctx.lineTo(x2, frameY + 12);
-                ctx.stroke();
-
-                // Add arrow to show direction (5' to 3')
-                ctx.fillStyle = region.color;
-                ctx.beginPath();
-                ctx.moveTo(x2 - 5, frameY);
-                ctx.lineTo(x2, frameY - 4);
-                ctx.lineTo(x2, frameY + 4);
-                ctx.closePath();
-                ctx.fill();
+                ctx.strokeRect(x1, y - 10, x2 - x1, 20);
             }
         });
     }
 
-    // Draw frame tracks
-    const frameY = [80, 110, 140];
+    // Draw frame tracks (neutral in accessibility mode)
+    const frameY = railsY;
     const frameBarHeight = 20;
     const frameLabels = ['Frame 0', 'Frame 1', 'Frame 2'];
 
@@ -396,18 +411,37 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
     ctx.textAlign = 'right';
 
     frameY.forEach((y, frame) => {
-        ctx.fillStyle = FRAME_COLORS[frame];
+        const railFillColor = cfg.mode === 'frames' ? FRAME_COLORS[frame] : railFill;
+        const railStrokeColor = cfg.mode === 'frames' ? FRAME_COLORS[frame] : railStroke;
+        const railAlpha = cfg.mode === 'frames' ? 0.2 : 1.0;
+
+        ctx.fillStyle = '#334155';
         ctx.fillText(frameLabels[frame], margin - 10, y + 6);
 
-        ctx.fillStyle = FRAME_COLORS[frame];
-        ctx.globalAlpha = 0.2;
-        ctx.fillRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
-        ctx.globalAlpha = 1;
-
-        ctx.strokeStyle = FRAME_COLORS[frame];
-        ctx.lineWidth = 1;
-        ctx.strokeRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+        if (railFillColor) {
+            ctx.fillStyle = railFillColor;
+            ctx.globalAlpha = railAlpha;
+            ctx.fillRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+            ctx.globalAlpha = 1;
+        }
+        if (railStrokeColor) {
+            ctx.strokeStyle = railStrokeColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(margin, y - frameBarHeight/2, seqEndX - margin, frameBarHeight);
+        }
     });
+
+    // Expose last layout and helpers for interactivity (only for primary RDG canvas)
+    if (typeof window !== 'undefined') {
+        const isPrimary = canvas && (canvas.id === 'rdg-canvas' || window.__RDG_PRIMARY_CANVAS === canvas);
+        if (isPrimary) {
+            window.RDG_LAST_EDGES = edges;
+            window.RDG_NT_TO_PIXEL = ntToPixel;
+            window.RDG_FRAME_Y = frameY;
+            window.RDG_Y_OFFSET = (typeof rdgYOffset !== 'undefined') ? rdgYOffset : 0;
+            window.RDG_LAST_STARTS = startCodons || [];
+        }
+    }
 
     // Draw start codons
     for (const start of startCodons) {
@@ -525,11 +559,13 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
         const x2 = ntToPixel(edge.x2);
 
         if (edge.type === 'noncoding') {
+            const y1p = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
+            const y2p = (edge.y2 || 0) + (window.RDG_Y_OFFSET || 0);
             ctx.strokeStyle = '#999';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(x1, edge.y1);
-            ctx.lineTo(x2, edge.y2);
+            ctx.moveTo(x1, y1p);
+            ctx.lineTo(x2, y2p);
             ctx.stroke();
         } else if (edge.type === 'vertical_branch') {
             ctx.strokeStyle = '#000';
@@ -539,20 +575,57 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             ctx.lineTo(x2, edge.y2);
             ctx.stroke();
         } else if (edge.type === 'translation') {
-            ctx.strokeStyle = FRAME_COLORS[edge.translon.frame];
+            // Base: translon bar (apply RDG offset)
+            const yOff = (typeof window !== 'undefined' && typeof window.RDG_Y_OFFSET === 'number') ? window.RDG_Y_OFFSET : 0;
+            ctx.strokeStyle = (cfg.mode === 'frames' ? FRAME_COLORS[edge.translon.frame] : baseTranslonColor);
             ctx.lineWidth = 12;
             ctx.lineCap = 'butt';
             ctx.beginPath();
-            ctx.moveTo(x1, edge.y1);
-            ctx.lineTo(x2, edge.y2);
+            ctx.moveTo(x1, (edge.y1||0) + yOff);
+            ctx.lineTo(x2, (edge.y2||0) + yOff);
             ctx.stroke();
+
+            // (moved) highlight overlay is drawn after overlays/labels so it stays on top
+
+            // NOTE: Do not overlay in-situ sequence (UTRs/CUSTOM). Overlay for reporter/linker only (handled below).
+
+            // Outlines: indicate construct blocks (reporters/linker) without obscuring frame color
+            if (constructRegions && constructRegions.length) {
+                const overlayTypes = new Set(['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC','LINKER']);
+                constructRegions.forEach(region => {
+                    if (!overlayTypes.has(region.type)) return;
+                    const rStartNt = region.assembled ? region.start : (region.start - 1);
+                    const rEndNt = region.end;
+                    const segStartNt = Math.max(edge.x1, rStartNt);
+                    const segEndNt = Math.min(edge.x2, rEndNt);
+                    if (segEndNt > segStartNt) {
+                        const sx = ntToPixel(segStartNt);
+                        const ex = ntToPixel(segEndNt);
+                        const color = region.color || colorForType(region.type);
+                        const barHalf = 8;
+                        const yTop = edge.y1 - barHalf;
+                        const height = barHalf * 2;
+                        // Strongly mute base within span
+                        ctx.save();
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(sx, yTop + 2, ex - sx, height - 4);
+                        ctx.restore();
+                        // Thicker outline
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 5;
+                        ctx.setLineDash([]);
+                        ctx.strokeRect(sx, yTop, ex - sx, height);
+                    }
+                });
+            }
 
             // Determine which reporters this translon produces
             let reporters = [];
             if (constructRegions) {
                 constructRegions.forEach(region => {
-                    if ((region.type === 'RLUC' || region.type === 'FLUC') &&
-                        edge.translon.startNt <= region.start - 1 &&
+                    if ((region.type === 'RLUC' || region.type === 'RLUC_WEAK' || region.type === 'RLUC_NO_STOP' || region.type === 'FLUC') &&
+                        edge.translon.startNt <= ((region.assembled ? region.start : (region.start - 1))) &&
                         edge.translon.endNt >= region.end) {
                         reporters.push(region.type);
                     }
@@ -565,7 +638,7 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'left';
             const labelX = x1 + 5;
-            const labelY = edge.y1 - 8;
+            const labelY = ((edge.y1||0) + ((typeof window !== 'undefined' && typeof window.RDG_Y_OFFSET === 'number') ? window.RDG_Y_OFFSET : 0)) - 8;
 
             let labelText = `${displayName}`;
             if (reporters.length > 0) {
@@ -581,8 +654,9 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                 ctx.lineWidth = 3;
                 ctx.setLineDash([]);
                 ctx.beginPath();
-                ctx.moveTo(stopX, edge.y1 - 6);
-                ctx.lineTo(stopX, edge.y1 + 6);
+                const yOff2 = (typeof window !== 'undefined' && typeof window.RDG_Y_OFFSET === 'number') ? window.RDG_Y_OFFSET : 0;
+                ctx.moveTo(stopX, ((edge.y1||0)+yOff2) - 6);
+                ctx.lineTo(stopX, ((edge.y1||0)+yOff2) + 6);
                 ctx.stroke();
 
                 // Add "RT" label above
@@ -599,7 +673,7 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                         const regX1 = ntToPixel(region.start - 1);
                         const regX2 = ntToPixel(region.end);
                         const regFrame = (region.start - 1) % 3;
-                        const regY = [80, 110, 140][regFrame];
+                        const regY = (typeof railsY !== 'undefined' ? railsY[regFrame] : [80,110,140][regFrame]);
 
                         // Dashed connection line from translation bar to reporter
                         ctx.strokeStyle = region.color;
@@ -610,7 +684,8 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                         // Connect from middle of translation bar to reporter
                         const midX = (Math.max(x1, regX1) + Math.min(x2, regX2)) / 2;
                         ctx.beginPath();
-                        ctx.moveTo(midX, edge.y1 + 6);
+                        const y1p2 = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
+                        ctx.moveTo(midX, y1p2 + 6);
                         ctx.lineTo(midX, regY);
                         ctx.stroke();
 
@@ -619,9 +694,27 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                     }
                 });
             }
+
+            // Highlight translon if selected (draw on top of overlays/labels)
+            try {
+                if (hiKeys) {
+                    const k = `${edge.translon.startNt}|${edge.translon.endNt}|${edge.translon.frame}`;
+                    if (hiKeys.has(k)) {
+                        ctx.save();
+                        ctx.strokeStyle = '#22c55e';
+                        ctx.lineWidth = 14;
+                        ctx.globalAlpha = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, (edge.y1||0) + yOff);
+                        ctx.lineTo(x2, (edge.y2||0) + yOff);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            } catch {}
         } else if (edge.type === 'readthrough') {
             // Readthrough segment - draw with dotted line to show it's conditional
-            ctx.strokeStyle = FRAME_COLORS[edge.translon.frame];
+            ctx.strokeStyle = (cfg.mode === 'frames' ? FRAME_COLORS[edge.translon.frame] : baseTranslonColor);
             ctx.lineWidth = 12;
             ctx.lineCap = 'butt';
             ctx.setLineDash([5, 5]);
@@ -633,23 +726,58 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             ctx.setLineDash([]);
             ctx.globalAlpha = 1;
 
+            // Outlines for readthrough path (reporter/linker only)
+            if (constructRegions && constructRegions.length) {
+                const overlayTypes = new Set(['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC','LINKER']);
+                constructRegions.forEach(region => {
+                    if (!overlayTypes.has(region.type)) return;
+                    const rStartNt = region.assembled ? region.start : (region.start - 1);
+                    const rEndNt = region.end;
+                    const segStartNt = Math.max(edge.x1, rStartNt);
+                    const segEndNt = Math.min(edge.x2, rEndNt);
+                    if (segEndNt > segStartNt) {
+                        const sx = ntToPixel(segStartNt);
+                        const ex = ntToPixel(segEndNt);
+                        const color = region.color || colorForType(region.type);
+                        const barHalf = 8;
+                        const yTop = edge.y1 - barHalf;
+                        const height = barHalf * 2;
+                        // Strongly mute base within span
+                        ctx.save();
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(sx, yTop + 2, ex - sx, height - 4);
+                        ctx.restore();
+                        // Thicker dashed outline
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 5;
+                        ctx.setLineDash([5, 5]);
+                        ctx.strokeRect(sx, yTop, ex - sx, height);
+                        ctx.setLineDash([]);
+                    }
+                });
+            }
+
             // Add readthrough probability label
             if (edge.probability !== undefined) {
                 ctx.fillStyle = '#f59e0b';
                 ctx.font = 'bold 10px sans-serif';
                 ctx.textAlign = 'center';
                 const midX = (x1 + x2) / 2;
-                ctx.fillText(`RT ${(edge.probability * 100).toFixed(0)}%`, midX, edge.y1 - 5);
+                const y1p = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
+                ctx.fillText(`RT ${(edge.probability * 100).toFixed(0)}%`, midX, y1p - 5);
             }
         } else if (edge.type === 'reinitiation') {
-            console.log(`Drawing reinitiation: x1=${x1}, y1=${edge.y1}, x2=${x2}, y2=${edge.y2}, label=${edge.label}`);
+            const y1p = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
+            const y2p = (edge.y2 || 0) + (window.RDG_Y_OFFSET || 0);
+            console.log(`Drawing reinitiation: x1=${x1}, y1=${y1p}, x2=${x2}, y2=${y2p}, label=${edge.label}`);
             ctx.strokeStyle = '#8b5cf6';
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 4]);
             ctx.globalAlpha = 0.6;
             ctx.beginPath();
-            ctx.moveTo(x1, edge.y1);
-            ctx.lineTo(x2, edge.y2);
+            ctx.moveTo(x1, y1p);
+            ctx.lineTo(x2, y2p);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.globalAlpha = 1;
@@ -664,7 +792,8 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             const x = ntToPixel(node.x);
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(x, node.y, 5, 0, Math.PI * 2);
+            const y = (node.y || 0) + (window.RDG_Y_OFFSET || 0);
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
             ctx.fill();
         } else if (node.type === 'readthrough_decision') {
             // Special marker for readthrough decision points
@@ -673,57 +802,97 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             ctx.fillStyle = '#fef3c7';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(x, node.y, 7, 0, Math.PI * 2);
+            const y = (node.y || 0) + (window.RDG_Y_OFFSET || 0);
+            ctx.arc(x, y, 7, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
         }
     });
+
+    // Legend (optional)
+    if (cfg.showLegend) {
+        const legendX = canvas.width - 220;
+        const legendY = 10;
+        const drawChip = (x, y, w, h, color, label, dashed=false) => {
+            if (dashed) { ctx.setLineDash([6,3]); }
+            ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.strokeRect(x, y, w, h);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#334155'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(label, x + w + 6, y + h - 2);
+        };
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 1;
+        ctx.fillRect(legendX, legendY, 210, 86); ctx.strokeRect(legendX, legendY, 210, 86);
+        ctx.fillStyle = '#334155'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('Legend', legendX + 8, legendY + 14);
+        const lY = legendY + 26; const h = 10; const w = 34; let curX = legendX + 8;
+        drawChip(curX, lY, w, h, colorForType('RLUC'), 'RLUC'); curX += 74;
+        drawChip(curX, lY, w, h, colorForType('FLUC'), 'FLUC'); curX = legendX + 8; const lY2 = lY + 18;
+        drawChip(curX, lY2, w, h, colorForType('LINKER'), 'LINKER'); curX += 92;
+        drawChip(curX, lY2, w, h, colorForType('RLUC'), 'readthrough', true);
+    }
 }
 
 // Suggest construct design based on sequence analysis
-function suggestConstructDesign(sequence, startCodons) {
+function suggestConstructDesign(sequence, startCodons, features = null) {
     const suggestions = [];
 
-    // Find potential uORFs (short ORFs in 5' region)
-    const uorfs = startCodons.filter(sc =>
-        sc.pos < sequence.length / 3 && // In first third of sequence
-        sc.orfLength < 300 && // Short ORF
-        sc.orfLength > 9 // At least 3 amino acids
-    );
+    // If features are available, use them to create targeted suggestions
+    if (features && features.predicted) {
+        const starts = features.predicted.startCodons || startCodons || [];
 
-    if (uorfs.length > 0) {
-        const lastUorf = Math.max(...uorfs.map(u => u.stopPos));
-        suggestions.push({
-            type: '5UTR',
-            start: 1,
-            end: Math.min(lastUorf + 50, Math.floor(sequence.length / 3)),
-            reason: `Contains ${uorfs.length} uORF(s) - good for testing translational regulation`,
-            regions: [
-                { name: '5UTR with uORFs', type: '5UTR', start: 1, end: lastUorf + 50 },
-                { name: 'Renilla Luciferase', type: 'RLUC', start: lastUorf + 51, end: lastUorf + 1050 },
-                { name: 'Linker', type: 'LINKER', start: lastUorf + 1051, end: lastUorf + 1080 },
-                { name: 'Firefly Luciferase', type: 'FLUC', start: lastUorf + 1081, end: Math.min(lastUorf + 2900, sequence.length) }
-            ]
-        });
-    }
+        // uORF-based construct: pick strongest uORF by initiation probability
+        const uorfs = (features.predicted.uorfs || []).slice().sort((a, b) => (b.initiationProbability || 0) - (a.initiationProbability || 0));
+        if (uorfs.length > 0) {
+            const top = uorfs[0];
+            const pad = 50;
+            const lastUorf = top.end;
+            const fiveEnd = Math.max(1, top.start - pad);
+            const fiveStop = Math.min(sequence.length, lastUorf + pad);
 
-    // Find main CDS (longest ORF)
-    const mainCDS = startCodons.reduce((longest, current) =>
-        current.orfLength > longest.orfLength ? current : longest
-    , startCodons[0]);
+            suggestions.push({
+                type: 'uORF Reporter',
+                reason: `Targets strongest uORF at ${top.start} (Kozak ${(top.kozakScore||0).toFixed(2)}, init ${(top.initiationProbability||0)*100|0}%)`,
+                targetStartPos: top.start,
+                regions: [
+                    { name: '5UTR with uORF', type: '5UTR', start: fiveEnd, end: fiveStop },
+                    { name: 'Renilla Luciferase', type: 'RLUC', start: fiveStop + 1, end: Math.min(fiveStop + 1000, sequence.length) },
+                    { name: 'Linker', type: 'LINKER', start: Math.min(fiveStop + 1001, sequence.length), end: Math.min(fiveStop + 1030, sequence.length) },
+                    { name: 'Firefly Luciferase', type: 'FLUC', start: Math.min(fiveStop + 1031, sequence.length), end: Math.min(fiveStop + 2950, sequence.length) }
+                ]
+            });
+        }
 
-    if (mainCDS && mainCDS.orfLength > 300) {
-        suggestions.push({
-            type: 'REPORTER_FUSION',
-            start: mainCDS.pos,
-            end: mainCDS.stopPos,
-            reason: `Main CDS detected (${Math.floor(mainCDS.orfLength/3)} aa) - create N-terminal reporter fusion`,
-            regions: [
-                { name: '5UTR', type: '5UTR', start: 1, end: mainCDS.pos - 1 },
-                { name: 'Renilla Luciferase', type: 'RLUC', start: mainCDS.pos, end: mainCDS.pos + 999 },
-                { name: 'Native CDS', type: 'CUSTOM', start: mainCDS.pos + 1000, end: mainCDS.stopPos }
-            ]
-        });
+        // Canonical CDS-based construct
+        if (features.canonical && features.canonical.cds) {
+            const cds = features.canonical.cds;
+            suggestions.push({
+                type: 'Main CDS Reporter',
+                reason: `Targets canonical start at ${cds.start} (Kozak ${(features.canonical.start?.initiationProbability||0)*100|0}%)`,
+                targetStartPos: cds.start,
+                regions: [
+                    { name: '5UTR', type: '5UTR', start: 1, end: Math.max(1, cds.start - 1) },
+                    { name: 'Renilla Luciferase', type: 'RLUC', start: cds.start + 1, end: Math.min(cds.start + 1000, sequence.length) },
+                    { name: 'Linker', type: 'LINKER', start: Math.min(cds.start + 1001, sequence.length), end: Math.min(cds.start + 1030, sequence.length) },
+                    { name: 'Firefly Luciferase', type: 'FLUC', start: Math.min(cds.start + 1031, sequence.length), end: Math.min(cds.start + 2950, sequence.length) }
+                ]
+            });
+        }
+    } else {
+        // Fallback heuristics if features missing
+        const uorfs = startCodons.filter(sc => sc.pos < sequence.length / 3 && sc.orfLength < 300 && sc.orfLength > 9);
+        if (uorfs.length > 0) {
+            const lastUorf = Math.max(...uorfs.map(u => u.stopPos));
+            suggestions.push({
+                type: '5UTR',
+                start: 1,
+                end: Math.min(lastUorf + 50, Math.floor(sequence.length / 3)),
+                reason: `Contains ${uorfs.length} uORF(s) - good for testing translational regulation`,
+                regions: [
+                    { name: '5UTR with uORFs', type: '5UTR', start: 1, end: lastUorf + 50 },
+                    { name: 'Renilla Luciferase', type: 'RLUC', start: lastUorf + 51, end: lastUorf + 1050 },
+                    { name: 'Linker', type: 'LINKER', start: lastUorf + 1051, end: lastUorf + 1080 },
+                    { name: 'Firefly Luciferase', type: 'FLUC', start: lastUorf + 1081, end: Math.min(lastUorf + 2900, sequence.length) }
+                ]
+            });
+        }
     }
 
     return suggestions;

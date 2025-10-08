@@ -186,6 +186,7 @@
 
         #rdg-canvas {
             width: 100%;
+            display: block;
             border: 2px solid #e2e8f0;
             border-radius: 6px;
             background: white;
@@ -304,20 +305,44 @@
             <div class="sequence-input">
                 <label>Sequence Source</label>
                 <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="radio" name="input_type" value="manual" id="radioManual" checked>
-                            <span>Manual Input</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="radio" name="input_type" value="symbol" id="radioSymbol">
-                            <span>Gene Symbol (e.g., ATF4, HIF1A)</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="radio" name="input_type" value="transcript" id="radioTranscript">
-                            <span>Transcript ID (e.g., ENST...)</span>
-                        </label>
+                    <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
+                        <label style="color:#64748b; font-size:0.9rem;">Load Example:</label>
+                        <select id="example-select" class="secondary-btn" style="padding:0.4rem 0.6rem;">
+                            <option value="">-- none --</option>
+                            <option value="preset1">Clean Bicistronic (Strong RLUC)</option>
+                            <option value="preset2">Weak RLUC, Strong FLUC</option>
+                            <option value="preset3">Fusion Positive (RLUC–FLUC)</option>
+                            <option value="preset4">uORF Suppression (ATF4-like)</option>
+                            <option value="preset5">Short uORF Reinit → FLUC</option>
+                            <option value="preset6">Near-Cognate uORF (CUG)</option>
+                        </select>
+                        <button id="load-example-btn" class="secondary-btn">Load</button>
+                        <button id="load-example-mindr-btn" class="secondary-btn">Load + MINDR</button>
                     </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="input_type" value="manual" id="radioManual" checked>
+                    <span>Manual Input</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="input_type" value="symbol" id="radioSymbol">
+                    <span>Gene Symbol (e.g., ATF4, HIF1A)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="input_type" value="transcript" id="radioTranscript">
+                    <span>Transcript ID (e.g., ENST...)</span>
+                </label>
+            </div>
+
+            <!-- Reporter source selection (sequence input phase) -->
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                <label for="reporter-source" style="color:#64748b; font-size:0.9rem; font-weight:600;">Reporters:</label>
+                <select id="reporter-source" class="secondary-btn" title="Choose reporter sequences" style="padding:0.3rem 0.5rem;">
+                    <option value="canonical" selected>Canonical (CDS)</option>
+                    <option value="custom">Custom…</option>
+                </select>
+                <button id="reporter-edit-btn" class="secondary-btn" style="padding:0.3rem 0.6rem;">Set Custom</button>
+            </div>
 
                     <div id="ensemblLookup" style="display: none; margin-bottom: 0.75rem;">
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -343,6 +368,16 @@
         <div class="section" id="construct-section" style="display: none;">
             <h2>2. Construct Design & Analysis</h2>
 
+            <!-- Reporter source selection (construct design phase) -->
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+                <label for="reporter-source-construct" style="color:#64748b; font-size:0.9rem; font-weight:600;">Reporters:</label>
+                <select id="reporter-source-construct" class="secondary-btn" title="Choose reporter sequences" style="padding:0.3rem 0.5rem;">
+                    <option value="canonical" selected>Canonical (CDS)</option>
+                    <option value="custom">Custom…</option>
+                </select>
+                <button id="reporter-edit-btn-construct" class="secondary-btn" style="padding:0.3rem 0.6rem;">Set Custom</button>
+            </div>
+
             <div id="suggestions-section" style="display: none; margin-bottom: 2rem; padding: 1rem; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px;">
                 <h3 style="color: #1e40af; margin-bottom: 0.5rem;">💡 Suggested Constructs</h3>
                 <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">Based on your sequence, here are recommended construct designs:</p>
@@ -351,6 +386,11 @@
 
             <h3>Define Reporter Regions</h3>
             <p style="color: #64748b; margin-bottom: 1rem;">Mark regions of your sequence as different construct components</p>
+            <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+                <label for="edit-construct-select" style="color:#64748b; font-size:0.9rem;">Edit Construct:</label>
+                <select id="edit-construct-select" class="secondary-btn" style="padding:0.3rem 0.5rem; min-width:220px;"></select>
+                <button id="load-construct-btn" class="secondary-btn">Load Selection</button>
+            </div>
 
             <div class="construct-regions" id="construct-regions">
                 <!-- Will be populated with region inputs -->
@@ -361,13 +401,107 @@
 
             <div id="rdg-container" class="rdg-container" style="display: none;">
                 <h3>Translation Initiation Sites (RDG)</h3>
-                <canvas id="rdg-canvas" width="1200" height="600"></canvas>
-
-                <h3>Modify Start Codons</h3>
-                <p style="color: #64748b; margin-bottom: 0.5rem;">Mutate start codons to test effects on translation</p>
-                <div id="mutation-list" class="mutation-list">
-                    <!-- Will be populated with mutation controls -->
+                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+                    <div>
+                        <label for="rdg-construct-select" style="color:#64748b; font-size:0.9rem;">View RDG for:</label>
+                        <select id="rdg-construct-select" class="secondary-btn" style="padding:0.3rem 0.5rem;"></select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.35rem 0.5rem;">
+                        <label for="rdg-color-mode" style="color:#64748b; font-size:0.9rem; font-weight:600;">Color mode:</label>
+                        <select id="rdg-color-mode" class="secondary-btn" style="padding:0.3rem 0.5rem;">
+                            <option value="accessibility" selected>Accessibility (blocks only)</option>
+                            <option value="frames">Frames colored</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.35rem 0.5rem;">
+                        <span style="color:#64748b; font-size:0.9rem; font-weight:600;">Click mode:</span>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            <input type="radio" name="rdg_click_mode" value="translon" checked>
+                            Add translon (nearest start)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            <input type="radio" name="rdg_click_mode" value="readthrough">
+                            Mark readthrough stop
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            <input type="radio" name="rdg_click_mode" value="edit">
+                            Edit translon
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            <input type="radio" name="rdg_click_mode" value="start">
+                            Mutate start
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#cbd5e1;" title="Frameshifts coming soon">
+                            <input type="radio" disabled>
+                            Frameshift (soon)
+                        </label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.35rem 0.5rem;">
+                        <label for="rdg-limit" style="color:#64748b; font-size:0.9rem; font-weight:600;">Max starts:</label>
+                        <input type="number" id="rdg-limit" value="16" min="1" max="100" style="width:72px; padding:0.3rem; border:1px solid #cbd5e1; border-radius:4px;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.35rem 0.5rem;">
+                        <label style="color:#64748b; font-size:0.9rem; font-weight:600;">Band merge:</label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            <input type="checkbox" id="band-merge-enabled" checked>
+                            De-duplicate similar MW
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.25rem; color:#64748b;">
+                            min ΔMW (kDa)
+                            <input type="number" id="band-merge-min" value="5" min="0" max="20" step="0.5" style="width:64px; padding:0.3rem; border:1px solid #cbd5e1; border-radius:4px;">
+                        </label>
+                    </div>
                 </div>
+                <div id="rdg-scroller" style="overflow-y:auto; max-height:60vh; border:1px solid #e2e8f0; border-radius:6px; background:#fff;">
+                    <canvas id="rdg-canvas" width="1200" height="700"></canvas>
+                </div>
+
+                <!-- Translon detail panel -->
+                <div id="translon-panel" style="display:none; margin-top:0.75rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:0.75rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <strong style="color:#334155;">Translon Details</strong>
+                        <div>
+                            <button id="translon-remove" class="secondary-btn" style="margin-right:0.25rem;">Remove</button>
+                            <button id="translon-close" class="secondary-btn">Close</button>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:0.75rem;">
+                        <div><label style="color:#64748b; font-size:0.85rem;">Name</label><div id="translon-name" style="color:#0f172a; font-weight:600;">—</div></div>
+                        <div><label style="color:#64748b; font-size:0.85rem;">Frame</label><div id="translon-frame" style="color:#0f172a;">—</div></div>
+                        <div><label style="color:#64748b; font-size:0.85rem;">Start (nt)</label><div id="translon-start" style="color:#0f172a;">—</div></div>
+                        <div><label style="color:#64748b; font-size:0.85rem;">Stop (nt)</label><div id="translon-stop" style="color:#0f172a;">—</div></div>
+                        <div><label style="color:#64748b; font-size:0.85rem;">Length (aa)</label><div id="translon-len" style="color:#0f172a;">—</div></div>
+                        <div><label style="color:#64748b; font-size:0.85rem;">Kozak</label><div id="translon-kozak" style="color:#0f172a;">—</div></div>
+                    </div>
+                    <div style="margin-top:0.75rem;">
+                        <label style="display:block; color:#64748b; font-size:0.85rem; margin-bottom:0.25rem;">Initiation Probability</label>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <input type="range" id="translon-prob-range" min="0" max="100" value="30" style="flex:1;">
+                            <input type="number" id="translon-prob-input" min="0" max="100" value="30" style="width:80px; padding:0.3rem; border:1px solid #cbd5e1; border-radius:4px;">
+                            <button id="translon-apply" class="primary-btn" style="width:auto; padding:0.4rem 0.8rem;">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Start mutation panel -->
+                <div id="start-mutation-panel" style="display:none; margin-top:0.75rem; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:0.75rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <strong style="color:#334155;">Start Mutation</strong>
+                        <div>
+                            <button id="start-mutation-close" class="secondary-btn">Close</button>
+                        </div>
+                    </div>
+                    <div id="start-mutation-info" style="color:#334155; font-size:0.9rem; margin-bottom:0.5rem;">—</div>
+                    <div>
+                        <div style="color:#64748b; font-size:0.85rem; margin-bottom:0.25rem;">Safe codon replacements</div>
+                        <div id="start-mutation-codons" style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.5rem;"></div>
+                        <div style="color:#64748b; font-size:0.85rem; margin-bottom:0.25rem;">Weaken Kozak (single-nt)</div>
+                        <div id="start-mutation-kozak" style="display:flex; gap:0.4rem; flex-wrap:wrap;"></div>
+                    </div>
+                </div>
+
+                <!-- Legacy mutation list hidden: replaced by Summary Interventions -->
+                <div id="mutation-list" class="mutation-list" style="display:none;"></div>
             </div>
         </div>
 
@@ -375,15 +509,58 @@
         <div class="section" id="western-section" style="display: none;">
             <h2>3. Predicted Western Blot</h2>
 
-            <div style="margin-bottom: 1rem;">
-                <button class="secondary-btn" id="save-construct-btn" style="margin-right: 0.5rem;">
-                    💾 Save Current Construct
-                </button>
-                <span id="saved-constructs-info" style="color: #64748b; font-size: 0.9rem;"></span>
+            <div id="wb-toolbar" style="margin-bottom: 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <button class="secondary-btn" id="save-construct-btn">
+                        💾 Save Current Construct
+                    </button>
+                    <span id="saved-constructs-info" style="color: #64748b; font-size: 0.9rem;"></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <label for="antibody-select" style="color:#64748b; font-size:0.9rem;">Antibody:</label>
+                    <select id="antibody-select" class="secondary-btn" style="padding:0.4rem 0.6rem;">
+                        <option value="RLUC">anti-RLuc</option>
+                        <option value="FLUC">anti-FLuc</option>
+                        <option value="BOTH" selected>both</option>
+                    </select>
+                    <label for="fasta-format" style="color:#64748b; font-size:0.9rem;">FASTA:</label>
+                    <select id="fasta-format" class="secondary-btn" style="padding:0.4rem 0.6rem;">
+                        <option value="RNA" selected>RNA (U)</option>
+                        <option value="DNA">DNA (T)</option>
+                    </select>
+                    <button id="download-fasta-btn" class="secondary-btn">⬇️ Download FASTA</button>
+                    <button id="export-figure-btn" class="secondary-btn" title="Export multi-panel figure (PNG)">🖼️ Export Figure</button>
+                </div>
             </div>
 
             <div id="western-comparison" class="western-container">
                 <!-- Will be populated with multiple gel lanes -->
+            </div>
+
+            <div id="compare-matrix-section" style="margin-top: 1rem;">
+                <h3>Compare Matrix</h3>
+                <div style="overflow-x:auto;">
+                    <table class="band-table" id="compare-matrix">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th data-key="name">Construct</th>
+                                <th data-key="rluc">RLUC %</th>
+                                <th data-key="drluc">ΔRLUC</th>
+                                <th data-key="fluc">FLUC %</th>
+                                <th data-key="dfluc">ΔFLUC</th>
+                                <th data-key="bands">Bands</th>
+                                <th data-key="rt">RT sites</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="rdg-summary-section" style="margin-top: 1rem;">
+                <h3>Construct RDG Summary</h3>
+                <div id="rdg-summary" style="display:grid; grid-template-columns: 1fr; gap: 1rem;"></div>
             </div>
 
             <div>
@@ -409,6 +586,11 @@
     <!-- Load shared RDG modules -->
     <script src="../shared/rdg-engine.js"></script>
     <script src="../shared/rdg-viz.js"></script>
+    <!-- Interactions provide hit-testing for translons and stop codons -->
+    <script src="../shared/rdg-interactions.js"></script>
+    <!-- Figure composer for paper-style multi-panel exports -->
+    <script src="../shared/rdg-figure.js"></script>
+    <script src="../shared/mindr.js"></script>
 
     <script>
         // ====================================================================
@@ -417,10 +599,27 @@
 
         let sequence = '';
         let startCodons = [];
+        let features = null; // RDG feature annotations (CDS, UTRs, uORFs, etc.)
         let constructRegions = [];
         let translons = [];
+        let wbCustomTranslons = []; // user-added translons on the assembled sequence
+        let wbSuppressedTranslons = new Set(); // keys of built translons to hide (start|end|frame)
+        let wbReadthroughStops = []; // [{pos, frame, codon, probability}]
+        let translonLimit = 16;
+        // Band merge (deduplicate similar MW bands)
+        let bandMergeEnabled = true;
+        let bandMergeMinKDa = 5; // absolute minimum separation to consider distinct
+        const bandMergeRel = 0.06; // additional relative separation (~6% of MW)
         let mutations = {}; // {position: 'mutated_codon'}
-        let savedConstructs = []; // Array of {name, regions, mutations, products}
+        let ntMutations = {}; // {position: 'A'|'U'|'G'|'C'} single-nt edits
+        let savedConstructs = []; // Array of {name, regions, mutations, ntMutations, products}
+        let experimentName = 'Custom';
+        let baselineIndex = null; // index into savedConstructs + current (last)
+        let compareSortKey = 'name';
+        let compareSortDir = 'asc';
+        // RDG Viz config (default accessibility)
+        window.RDGVizConfig = { mode: 'accessibility' };
+        let assembled = null; // { sequence, regions } for current construct
 
         // ====================================================================
         // ENSEMBL API (copied from RDG demo)
@@ -525,24 +724,19 @@
         // ====================================================================
 
         document.getElementById('load-seq-btn').addEventListener('click', () => {
-            const input = document.getElementById('sequence').value.trim().toUpperCase();
+            const raw = document.getElementById('sequence').value;
+            const cleaned = parseSequenceInput(raw);
 
-            if (!input) {
-                alert('Please enter a sequence');
+            if (!cleaned.ok) {
+                alert(cleaned.error);
                 return;
             }
 
-            // Clean sequence
-            sequence = input.replace(/\s/g, '').replace(/T/g, 'U');
+            sequence = cleaned.sequence;
 
-            // Validate
-            if (!/^[AUGC]+$/.test(sequence)) {
-                alert('Invalid sequence. Only AUGC characters allowed.');
-                return;
-            }
-
-            // Find all start codons using shared RDG engine
-            startCodons = RDGEngine.findStartCodons(sequence);
+            // Find all start codons and identify features using shared RDG engine
+            features = RDGEngine.identifyFeatures(sequence);
+            startCodons = features.predicted.startCodons || RDGEngine.findStartCodons(sequence);
 
             // Show construct section
             document.getElementById('construct-section').style.display = 'block';
@@ -559,9 +753,229 @@
             }, 3000);
         });
 
+        // Parse FASTA or raw sequence input into a clean RNA string (AUGC)
+        function parseSequenceInput(raw) {
+            if (!raw || raw.trim().length === 0) {
+                return { ok: false, error: 'Please enter a sequence' };
+            }
+
+            const text = raw.trim();
+            let seq = '';
+
+            if (text[0] === '>') {
+                // FASTA: skip headers, join lines
+                const lines = text.split(/\r?\n/);
+                for (const line of lines) {
+                    if (line.startsWith('>')) continue;
+                    seq += line.trim();
+                }
+            } else {
+                // Plain text
+                seq = text;
+            }
+
+            seq = seq.toUpperCase().replace(/[^ACGTU]/g, '').replace(/T/g, 'U');
+
+            if (seq.length < 3) {
+                return { ok: false, error: 'Sequence too short (min 3 nt required)' };
+            }
+
+            if (!/^[AUGC]+$/.test(seq)) {
+                return { ok: false, error: 'Invalid characters after cleanup. Only A,U,G,C allowed.' };
+            }
+
+            // Cap extremely long inputs to protect UI, but allow large sequences gracefully
+            const MAX_NT = 1000000; // 1M nt guard
+            if (seq.length > MAX_NT) {
+                return { ok: false, error: `Sequence too long (${seq.length} nt). Limit is ${MAX_NT} nt.` };
+            }
+
+            return { ok: true, sequence: seq };
+        }
+
+        // ===============================
+        // PRESET EXAMPLES
+        // ===============================
+        const EXAMPLES = {
+            preset1: {
+                name: 'Clean Bicistronic (Strong RLUC)'
+            , baseSequence: (function(){
+                    // 5'UTR ~60nt, varied composition, end with GGG for strong -3
+                    return 'GGCUCCGACGUGGCCACCUCCGAGGAGCCGUGCCGAACCGGAGGCUAAGCCGGGG';
+                })()
+            , regions: [
+                    { name:'5UTR', type:'5UTR', start:1, end:60 },
+                    { name:'Renilla Luciferase', type:'RLUC', start:1, end:1 },
+                    { name:'Linker', type:'LINKER', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            },
+            preset2: {
+                name: 'Weak RLUC, Strong FLUC'
+            , baseSequence: (function(){
+                    // Varied 5'UTR ending in CCC to weaken -3
+                    return 'GGAUCCGAUGCCUGAGCUACCGGCUAUGCCGAUACCGGAUCUACGUCCC';
+                })()
+            , regions: [
+                    { name:'5UTR', type:'5UTR', start:1, end:60 },
+                    { name:'Renilla Luciferase (weak +4)', type:'RLUC_WEAK', start:1, end:1 },
+                    { name:'Linker', type:'LINKER', start:1, end:1 },
+                    { name:'Kozak Pad', type:'PAD_G3', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            },
+            preset3: {
+                name: 'Fusion Positive (RLUC–FLUC)'
+            , baseSequence: (function(){ return 'GGCUCCGACGUGGCCACCUCCGAGGAGCCGUGCCGAACCGGAGGCUAAGCCGGGG'; })()
+            , regions: [
+                    { name:'5UTR', type:'5UTR', start:1, end:60 },
+                    { name:'Renilla Luciferase (no stop)', type:'RLUC_NO_STOP', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            },
+            preset4: {
+                name: 'uORF Suppression (ATF4-like)'
+            , baseSequence: (function(){
+                    // Add a strong short uORF in 5'UTR: Kozak -3=G, +4=G, length ~15 aa
+                    // 5' leader (30nt) + Kozak GNN + uORF AUG ... (15 aa) ... STOP + spacer 60nt
+                    let leader = 'GGCUCCGACGUGGCCACCUCCGAGGAG'; // 26nt
+                    leader += 'GAA'; // pad to place -3 = G
+                    let uorf = 'AUG' + 'GCU'.repeat(14) + 'UAA';
+                    let spacer = 'GGCUGAGCCGUGGAGCUAGGCCUGAGCUAGGCCUGAGCUAGGUCG';
+                    return leader + uorf + spacer;
+                })()
+            , regions: [
+                    { name:'5UTR with uORF', type:'5UTR', start:1, end: (30 + 3 + 14*3 + 3 + 60) },
+                    { name:'Renilla Luciferase', type:'RLUC', start:1, end:1 },
+                    { name:'Linker', type:'LINKER', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            },
+            preset5: {
+                name: 'Short uORF Reinit → FLUC'
+            , baseSequence: (function(){
+                    // Short uORF (<30 aa) then spacing > 50nt before FLUC start (we place RLUC weaker)
+                    let leader = 'GGCUCCGACGUGGCCACCUCCGAGGAG' + 'GAA';
+                    let uorf = 'AUG' + 'GCU'.repeat(9) + 'UAA'; // 10 aa
+                    let spacer = 'GGCUGAGCCGUGGAGCUAGGCCUGAGCUAGGCCUGAGCUAGGUCGGAGGCU';
+                    return leader + uorf + spacer;
+                })()
+            , regions: [
+                    { name:'5UTR with short uORF', type:'5UTR', start:1, end:(30+3+9*3+3+70) },
+                    { name:'Renilla Luciferase (weak +4)', type:'RLUC_WEAK', start:1, end:1 },
+                    { name:'Linker', type:'LINKER', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            },
+            preset6: {
+                name: 'Near-Cognate uORF (CUG)'
+            , baseSequence: (function(){
+                    // CUG near 5' end, then RLUC strong
+                    let pre = 'GGCUCCGACGUGGCCACCU';
+                    let cug = 'CUG' + 'GCU'.repeat(5) + 'UAA';
+                    let spacer = 'GGCUGAGCCGUGGAGCUAGGCCUGAGCUAGGCCUGAGCUAGGUCG';
+                    return pre + cug + spacer;
+                })()
+            , regions: [
+                    { name:'5UTR with CUG uORF', type:'5UTR', start:1, end:(20+3+5*3+3+60) },
+                    { name:'Renilla Luciferase', type:'RLUC', start:1, end:1 },
+                    { name:'Linker', type:'LINKER', start:1, end:1 },
+                    { name:'Firefly Luciferase', type:'FLUC', start:1, end:1 }
+                ]
+            }
+        };
+
+        document.getElementById('load-example-btn').addEventListener('click', () => {
+            const key = document.getElementById('example-select').value;
+            if (!key || !EXAMPLES[key]) return;
+            const ex = EXAMPLES[key];
+            experimentName = ex.name || 'Example';
+            // Set sequence textarea and load
+            document.getElementById('sequence').value = ex.baseSequence;
+            const cleaned = parseSequenceInput(ex.baseSequence);
+            if (!cleaned.ok) { alert('Example sequence invalid'); return; }
+            sequence = cleaned.sequence;
+
+            // Apply regions
+            constructRegions = ex.regions.map(r => ({ ...r, color: REGION_COLORS[r.type] || '#64748b' }));
+            mutations = {};
+
+            // Show construct section and analyze immediately
+            document.getElementById('construct-section').style.display = 'block';
+            renderConstructRegions();
+            analyzeConstruct();
+        });
+
+        document.getElementById('load-example-mindr-btn').addEventListener('click', () => {
+            const key = document.getElementById('example-select').value;
+            if (!key || !EXAMPLES[key]) return;
+            const ex = EXAMPLES[key];
+            experimentName = ex.name || 'Example';
+            document.getElementById('sequence').value = ex.baseSequence;
+            const cleaned = parseSequenceInput(ex.baseSequence);
+            if (!cleaned.ok) { alert('Example sequence invalid'); return; }
+            sequence = cleaned.sequence;
+
+            constructRegions = ex.regions.map(r => ({ ...r, color: REGION_COLORS[r.type] || '#64748b' }));
+            mutations = {};
+            document.getElementById('construct-section').style.display = 'block';
+            renderConstructRegions();
+
+            // Assemble and compute features on assembled sequence
+            assembled = RDGEngine.assembleConstruct(sequence, constructRegions);
+            const feats = RDGEngine.identifyFeatures(assembled.sequence);
+
+            // Pick target: if preset2 (weak RLUC, strong FLUC) target FLUC; if preset4/5/6 with uORFs, target first uORF; else target RLUC
+            let targetStartPos = null;
+            if (key === 'preset2') {
+                const flucRegion = assembled.regions.find(r => r.type === 'FLUC');
+                targetStartPos = flucRegion ? flucRegion.start : null;
+            } else if (key === 'preset4' || key === 'preset5' || key === 'preset6') {
+                targetStartPos = (feats.predicted.uorfs && feats.predicted.uorfs.length) ? feats.predicted.uorfs[0].start : null;
+            } else {
+                const rlucRegion = assembled.regions.find(r => r.type === 'RLUC' || r.type === 'RLUC_WEAK' || r.type === 'RLUC_NO_STOP');
+                targetStartPos = rlucRegion ? rlucRegion.start : null;
+            }
+
+            if (targetStartPos == null) {
+                analyzeConstruct();
+                return;
+            }
+
+            const controls = MINDR.generateControls(assembled.sequence, feats, { name: ex.name, startPos: targetStartPos });
+
+            // Save Test + Controls as lanes, operating on assembled sequence directly
+            savedConstructs = []; // reset
+            controls.forEach(ctrl => {
+                let seq = assembled.sequence;
+                Object.entries(ctrl.mutations).forEach(([p, codon]) => {
+                    const pos = parseInt(p);
+                    seq = seq.substring(0, pos) + codon + seq.substring(pos + 3);
+                });
+
+                const cfeats = RDGEngine.identifyFeatures(seq);
+                const starts = cfeats.predicted.startCodons || RDGEngine.findStartCodons(seq);
+                const trans = RDGEngine.buildTranslons(seq, { features: cfeats, startCodons: starts, limit: translonLimit, ensureStarts: assembled.regions.filter(r=>['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC'].includes(r.type)).map(r=>r.start) });
+
+                const constructMap = {};
+                assembled.regions.forEach(region => {
+                    constructMap[region.type] = { start: region.start, end: region.end };
+                });
+                const products = RDGEngine.predictProteinProducts(trans, constructMap);
+
+                savedConstructs.push({ name: ctrl.label, experiment: experimentName, regions: JSON.parse(JSON.stringify(constructRegions)), mutations: ctrl.mutations, assembled: { sequence: seq, regions: assembled.regions }, products });
+            });
+
+            // Set current as assembled baseline
+            analyzeConstruct();
+            // Redraw with saved constructs
+            generateWesternBlot();
+            refreshEditConstructSelect();
+        });
+
         // Show suggested construct designs
         function showConstructSuggestions() {
-            const suggestions = RDGViz.suggestConstructDesign(sequence, startCodons);
+            const suggestions = RDGViz.suggestConstructDesign(sequence, startCodons, features);
 
             if (suggestions.length === 0) {
                 return;
@@ -583,9 +997,14 @@
                             <strong style="color: #1e40af;">Suggestion ${index + 1}: ${sug.type}</strong>
                             <p style="color: #64748b; font-size: 0.85rem; margin-top: 0.25rem;">${sug.reason}</p>
                         </div>
-                        <button class="secondary-btn" onclick="applySuggestion(${index})" style="padding: 0.4rem 0.8rem;">
-                            Use This
-                        </button>
+                        <div style="display:flex; gap: 0.5rem;">
+                            <button class="secondary-btn" onclick="applySuggestion(${index})" style="padding: 0.4rem 0.8rem;">
+                                Use This
+                            </button>
+                            <button class="primary-btn" onclick="applySuggestionWithControls(${index})" style="padding: 0.4rem 0.8rem; width:auto;">
+                                Use + MINDR Controls
+                            </button>
+                        </div>
                     </div>
                     <div style="font-size: 0.8rem; color: #64748b;">
                         ${sug.regions.map(r => `${r.type}: ${r.start}-${r.end}`).join(' | ')}
@@ -608,6 +1027,63 @@
             renderConstructRegions();
         };
 
+        window.applySuggestionWithControls = function(index) {
+            const suggestion = window.constructSuggestions[index];
+            // Apply construct regions
+            constructRegions = suggestion.regions.map(r => ({
+                ...r,
+                color: REGION_COLORS[r.type]
+            }));
+            renderConstructRegions();
+
+            // Determine target start codon for controls
+            const targetStartPos = suggestion.targetStartPos ?? (features && features.canonical && features.canonical.start ? features.canonical.start.pos : null);
+            if (targetStartPos === null) {
+                alert('Could not determine target start codon for controls.');
+                return;
+            }
+
+            // Build and save Test + Controls
+            const controls = MINDR.generateControls(sequence, features, { name: suggestion.type, startPos: targetStartPos });
+
+            // For each control, compute translons and products, then save
+            controls.forEach(ctrl => {
+                // Apply control mutations to working sequence
+                let seq = sequence;
+                Object.entries(ctrl.mutations).forEach(([p, codon]) => {
+                    const pos = parseInt(p);
+                    seq = seq.substring(0, pos) + codon + seq.substring(pos + 3);
+                });
+
+                // Assemble construct for this control and analyze on assembled sequence
+                const asm = RDGEngine.assembleConstruct(seq, constructRegions);
+                const feats = RDGEngine.identifyFeatures(asm.sequence);
+                const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(asm.sequence);
+                const trans = RDGEngine.buildTranslons(asm.sequence, { features: feats, startCodons: starts, limit: 8 });
+
+                // Predict products using current construct map
+                const constructMap = {};
+                asm.regions.forEach(region => {
+                    constructMap[region.type] = { start: region.start, end: region.end };
+                });
+                const products = RDGEngine.predictProteinProducts(trans, constructMap).filter(p => p.detectable);
+
+                savedConstructs.push({
+                    name: ctrl.label,
+                    regions: JSON.parse(JSON.stringify(constructRegions)),
+                    mutations: ctrl.mutations,
+                    assembled: asm,
+                    products
+                });
+            });
+
+            document.getElementById('saved-constructs-info').textContent = `${savedConstructs.length} construct(s) saved`;
+            // Generate gel with all saved lanes
+            generateWesternBlot();
+            // Jump to western section
+            document.getElementById('western-section').style.display = 'block';
+        };
+
         // ====================================================================
         // CONSTRUCT BUILDER
         // ====================================================================
@@ -615,8 +1091,11 @@
         const REGION_COLORS = {
             '5UTR': '#10b981',
             'RLUC': '#3b82f6',
+            'RLUC_NO_STOP': '#2563eb',
+            'RLUC_WEAK': '#60a5fa',
             'LINKER': '#f59e0b',
             'FLUC': '#ef4444',
+            'PAD_G3': '#22c55e',
             '3UTR': '#8b5cf6',
             'CUSTOM': '#64748b'
         };
@@ -644,7 +1123,10 @@
                     <select onchange="updateRegionType(${index}, this.value)">
                         <option value="5UTR" ${region.type === '5UTR' ? 'selected' : ''}>5' UTR</option>
                         <option value="RLUC" ${region.type === 'RLUC' ? 'selected' : ''}>Renilla Luc</option>
+                        <option value="RLUC_WEAK" ${region.type === 'RLUC_WEAK' ? 'selected' : ''}>Renilla Luc (weak +4)</option>
+                        <option value="RLUC_NO_STOP" ${region.type === 'RLUC_NO_STOP' ? 'selected' : ''}>Renilla Luc (no stop)</option>
                         <option value="LINKER" ${region.type === 'LINKER' ? 'selected' : ''}>Linker</option>
+                        <option value="PAD_G3" ${region.type === 'PAD_G3' ? 'selected' : ''}>Kozak Pad (GGG)</option>
                         <option value="FLUC" ${region.type === 'FLUC' ? 'selected' : ''}>Firefly Luc</option>
                         <option value="3UTR" ${region.type === '3UTR' ? 'selected' : ''}>3' UTR</option>
                         <option value="CUSTOM" ${region.type === 'CUSTOM' ? 'selected' : ''}>Custom</option>
@@ -705,52 +1187,123 @@
         });
 
         function analyzeConstruct() {
-            // Apply mutations to sequence
+            // Clear highlights when analysis changes
+            if (typeof window !== 'undefined') {
+                window.RDG_HIGHLIGHT_KEYS = null;
+                window.RDG_HIGHLIGHT_REPORTERS = null;
+            }
+            // Apply mutations to the base sequence
             let workingSequence = sequence;
+            // Apply single-nt edits first
+            if (ntMutations && Object.keys(ntMutations).length) {
+                const arr = workingSequence.split('');
+                for (const [k, v] of Object.entries(ntMutations)) {
+                    const p = parseInt(k);
+                    if (!isNaN(p) && p >= 0 && p < arr.length && /[AUGC]/.test(v)) arr[p] = v;
+                }
+                workingSequence = arr.join('');
+            }
             for (const [pos, mut] of Object.entries(mutations)) {
                 const p = parseInt(pos);
                 workingSequence = workingSequence.substring(0, p) + mut + workingSequence.substring(p + 3);
             }
 
-            // Find start codons in mutated sequence
-            startCodons = RDGEngine.findStartCodons(workingSequence);
+            // Assemble the construct into a full transcript using reporter libraries
+            assembled = RDGEngine.assembleConstruct(workingSequence, constructRegions);
 
-            // Create translons (select top start codons by probability)
-            translons = [];
-            startCodons.forEach((start, index) => {
-                const prob = RDGEngine.calculateInitiationProbability(
-                    start.codon,
-                    start.kozakScore,
-                    start.gcContent
-                );
+            // Identify features and start codons on the assembled sequence
+            features = RDGEngine.identifyFeatures(assembled.sequence, { readthroughStops: wbReadthroughStops });
+            startCodons = features.predicted.startCodons || RDGEngine.findStartCodons(assembled.sequence, wbReadthroughStops);
 
-                translons.push({
-                    name: `T${index + 1}`,
-                    startNt: start.pos,
-                    endNt: start.stopPos,
-                    frame: start.frame,
-                    codon: start.codon,
-                    probability: prob,
-                    orfLength: start.orfLength
-                });
+            // Build translons via RDG engine with structured fields on assembled sequence
+            // Collect reporter starts to guarantee inclusion in translons
+            const reporterStarts = ((assembled && assembled.regions) || [])
+                .filter(r => ['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC'].includes(r.type))
+                .map(r => r.start);
+
+            translons = RDGEngine.buildTranslons(assembled.sequence, {
+                features,
+                startCodons,
+                limit: translonLimit,
+                ensureStarts: reporterStarts
             });
 
-            // Sort by probability and take top 8
-            translons.sort((a, b) => b.probability - a.probability);
-            translons = translons.slice(0, 8);
+            // Merge/override with custom translons (replace if key exists)
+            const toKey = (t) => `${t.startNt}|${t.endNt}|${t.frame}`;
+            const tMap = new Map(translons.map(t => [toKey(t), t]));
+            wbCustomTranslons.forEach(ct => {
+                const key = toKey(ct);
+                const base = tMap.get(key) || {};
+                // Override probability fields and keep other annotations
+                tMap.set(key, { ...base, ...ct });
+            });
+            translons = Array.from(tMap.values());
+
+            // Apply suppression (hide selected built translons)
+            translons = translons.filter(t => !wbSuppressedTranslons.has(`${t.startNt}|${t.endNt}|${t.frame}`));
+
+            // Band-merge: remove translons that would be indistinguishable on a gel
+            translons = filterIndistinguishableTranslons(translons);
 
             // Show RDG visualization
             document.getElementById('rdg-container').style.display = 'block';
             drawRDG();
 
-            // Render mutation controls
-            renderMutationControls();
+            // Legacy mutation controls suppressed (Interventions moved to summary)
 
-            // Generate western blot
+            // Generate western blot (also updates RDG dropdown)
             generateWesternBlot();
+
+            // Refresh construct editor selector (include Current option)
+            refreshEditConstructSelect();
 
             // Show western section
             document.getElementById('western-section').style.display = 'block';
+        }
+
+        // Remove translons whose predicted MW is too close to a larger MW translon (indistinguishable on gel)
+        // Optionally pass an assembled reference (for saved constructs);
+        // otherwise uses current global 'assembled'.
+        function filterIndistinguishableTranslons(ts, asmRef) {
+            try {
+                if (!bandMergeEnabled || !ts || ts.length <= 1) return ts;
+                // Always keep custom translons and reporter starts
+                const asm = asmRef || assembled;
+                const ensureStarts = ((asm && asm.regions) || [])
+                    .filter(r => ['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC'].includes(r.type))
+                    .map(r => r.start);
+                const ensureKeys = new Set(wbCustomTranslons.map(ct => `${ct.startNt}|${ct.endNt}|${ct.frame}`));
+
+                const withMW = ts.map(t => ({
+                    key: `${t.startNt}|${t.endNt}|${t.frame}`,
+                    t,
+                    mw: RDGEngine.calculateProteinMW((t.endNt - t.startNt))
+                }));
+                // Sort by MW descending so we prefer keeping the largest proteoform in a cluster
+                withMW.sort((a,b) => b.mw - a.mw);
+
+                const kept = [];
+                for (const item of withMW) {
+                    const mustKeep = ensureKeys.has(item.key) || ensureStarts.includes(item.t.startNt);
+                    if (mustKeep) { kept.push(item); continue; }
+                    // If within threshold of an already kept band, drop it
+                    const isTooClose = kept.some(k => {
+                        const minSep = Math.max(bandMergeMinKDa, bandMergeRel * Math.max(item.mw, k.mw));
+                        return Math.abs(k.mw - item.mw) < minSep;
+                    });
+                    if (!isTooClose) kept.push(item);
+                }
+                // Restore original order preference by abundance then start
+                const result = kept.map(x => x.t);
+                result.sort((a,b) => {
+                    const ab = (b.predictedAbundance||0) - (a.predictedAbundance||0);
+                    return ab !== 0 ? ab : (a.startNt - b.startNt);
+                });
+                return result;
+            } catch (e) {
+                console.warn('Band-merge filter failed', e);
+                return ts;
+            }
         }
 
         // ====================================================================
@@ -761,11 +1314,353 @@
         const ctx = canvas.getContext('2d');
         const FRAME_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
 
+        function updateRDGCanvasSize(seqLen) {
+            // Scale canvas width to sequence length; keep readable and scrollable
+            const margin = 50;
+            const pxPerNt = 0.6; // 0.6 px per nt; 2kb -> ~1200px
+            const minW = 1200;
+            const maxW = 6000;
+            const target = Math.round(margin + (seqLen * pxPerNt) + margin);
+            const width = Math.max(minW, Math.min(maxW, target));
+            if (canvas.width !== width) {
+                canvas.width = width; // reset canvas backing store
+            }
+        }
+
         function drawRDG() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Use shared RDG visualization module
-            RDGViz.drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COLORS, constructRegions);
+            const vizSeq = (assembled && assembled.sequence) || sequence;
+            const vizRegions = (assembled && assembled.regions) || constructRegions;
+            if (vizSeq && vizSeq.length) updateRDGCanvasSize(vizSeq.length);
+            RDGViz.drawTreeLayout(ctx, canvas, translons, vizSeq, startCodons, FRAME_COLORS, vizRegions, wbReadthroughStops, []);
+        }
+
+        // View RDG for a specific constructed lane without mutating global state
+        function viewRDGForConstruct(construct) {
+            if (!construct || !construct.assembled || !construct.assembled.sequence) return;
+            const seq = construct.assembled.sequence;
+            const feats = RDGEngine.identifyFeatures(seq, { readthroughStops: wbReadthroughStops });
+            const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(seq, wbReadthroughStops);
+            const ensure = (construct.assembled.regions || []).filter(r => ['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC'].includes(r.type)).map(r => r.start);
+            let trans = RDGEngine.buildTranslons(seq, { features: feats, startCodons: starts, limit: translonLimit, ensureStarts: ensure });
+            // Apply band-merge filtering for this assembled construct
+            trans = filterIndistinguishableTranslons(trans, construct.assembled);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            RDGViz.drawTreeLayout(ctx, canvas, trans, seq, starts, FRAME_COLORS, construct.assembled.regions, wbReadthroughStops, []);
+        }
+
+        // ===============================
+        // RDG CANVAS INTERACTION
+        // ===============================
+        (function enableRDGInteractions(){
+            const canvasEl = document.getElementById('rdg-canvas');
+            const getClickMode = () => (document.querySelector('input[name="rdg_click_mode"]:checked')?.value || 'translon');
+            if (!canvasEl) { console.warn('[RDG] canvas not found'); return; }
+            console.log('[RDG] interactions enabled');
+            // Diagnostics: low-level click listener
+            canvasEl.addEventListener('click', (e) => {
+                const rect = canvasEl.getBoundingClientRect();
+                const x = Math.round((e.clientX - rect.left) * (canvasEl.width/rect.width));
+                const y = Math.round((e.clientY - rect.top) * (canvasEl.height/rect.height));
+                console.log('[RDG] raw click', { mode: getClickMode(), x, y, edges: (window.RDG_LAST_EDGES||[]).length, yOff: window.RDG_Y_OFFSET });
+            }, { capture: true });
+
+            // Replace inline handler with shared interactions
+            canvasEl.addEventListener('click', (e) => {
+                const rect = canvasEl.getBoundingClientRect();
+                // Convert from CSS pixels to canvas pixels
+                const scaleX = canvasEl.width / rect.width;
+                const scaleY = canvasEl.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+                const mode = getClickMode();
+                if (mode === 'edit') {
+                    const t = (window.RDGInteractions && RDGInteractions.hitTestTranslonAt) ? RDGInteractions.hitTestTranslonAt(x, y) : null;
+                    if (t) openTranslonPanel(t);
+                    return;
+                }
+                if (mode === 'start') {
+                    const s = (window.RDGInteractions && RDGInteractions.hitTestStartAt) ? RDGInteractions.hitTestStartAt(x, y) : null;
+                    if (s) { openStartMutationPanel(s); }
+                    return;
+                }
+                if (mode === 'readthrough') {
+                    const seq = (assembled && assembled.sequence) || sequence || '';
+                    const s = (window.RDGInteractions && RDGInteractions.hitTestStopAt) ? RDGInteractions.hitTestStopAt(x, y, seq) : null;
+                    if (s) {
+                        const idx = wbReadthroughStops.findIndex(rt => rt.pos === s.pos);
+                        if (idx >= 0) wbReadthroughStops.splice(idx, 1);
+                        else wbReadthroughStops.push({ pos: s.pos, frame: s.frame, codon: s.codon, probability: 0.1 });
+                        analyzeConstruct();
+                    }
+                    return;
+                }
+                // default add translon near clicked frame
+                
+                const margin = 50;
+                const vizSeq = (assembled && assembled.sequence) || sequence;
+                const seqLen = vizSeq ? vizSeq.length : 0;
+                if (!seqLen) return;
+                const seqEndX = canvasEl.width - margin;
+                const pixelToNt = (px) => Math.max(0, Math.round(((px - margin) / (seqEndX - margin)) * seqLen));
+                const ntPos = pixelToNt(x);
+
+                // Frame tracks Y (match rdg-viz)
+                const framesY = (window.RDG_FRAME_Y && Array.isArray(window.RDG_FRAME_Y)) ? window.RDG_FRAME_Y : [80,110,140];
+                let clickedFrame = -1;
+                for (let i = 0; i < framesY.length; i++) {
+                    if (Math.abs(y - framesY[i]) < 15) { clickedFrame = i; break; }
+                }
+
+                // Default: add translon at nearest start in clicked frame
+                if (clickedFrame === -1) return;
+                if (!Array.isArray(startCodons) || startCodons.length === 0) return;
+                let nearestStart = null; let dmin = 1e9;
+                startCodons.forEach(s => {
+                    if (s.frame !== clickedFrame) return;
+                    const d = Math.abs(s.pos - ntPos);
+                    if (d < dmin) { dmin = d; nearestStart = s; }
+                });
+                if (!nearestStart || dmin > 80) return; // 80nt tolerance (more forgiving)
+
+                // If a built translon already exists for this start, unsuppress it if needed
+                const builtKey = `${nearestStart.pos}|${nearestStart.stopPos}|${nearestStart.frame}`;
+                if (wbSuppressedTranslons.has(builtKey)) wbSuppressedTranslons.delete(builtKey);
+
+                const prob = RDGEngine.calculateInitiationProbability(nearestStart.codon, nearestStart.kozakScore, nearestStart.gcContent);
+                const existing = translons.find(tt => tt.startNt === nearestStart.pos && tt.endNt === nearestStart.stopPos && tt.frame === nearestStart.frame);
+                const t = {
+                    pathId: existing ? existing.pathId : `U${Date.now()%10000}`,
+                    name: existing ? existing.name : `U${Date.now()%10000}`,
+                    startNt: nearestStart.pos,
+                    endNt: nearestStart.stopPos,
+                    stopNt: nearestStart.stopPos,
+                    frame: nearestStart.frame,
+                    startCodon: nearestStart.codon,
+                    kozakScore: nearestStart.kozakScore,
+                    gcContent: nearestStart.gcContent,
+                    isCanonicalStart: false,
+                    isAUG: nearestStart.isAUG,
+                    classification: 'custom',
+                    predictedProteinSize: RDGEngine.calculateProteinMW(nearestStart.stopPos - nearestStart.pos),
+                    predictedProteinSizeKd: RDGEngine.calculateProteinMW(nearestStart.stopPos - nearestStart.pos),
+                    predictedAbundance: prob,
+                    predictedLUC: prob,
+                    probability: prob,
+                    orfLength: nearestStart.stopPos - nearestStart.pos,
+                    initiationProbability: prob,
+                    sourceIndex: -1
+                };
+                // Record and refresh visuals/products
+                wbCustomTranslons.push(t);
+                // Re-run full analysis to merge custom translons and refresh RDG + gel
+                analyzeConstruct();
+            });
+        })();
+
+        // Control translon limit
+        document.getElementById('rdg-limit').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            if (!isNaN(val) && val >= 1 && val <= 100) {
+                translonLimit = val;
+                analyzeConstruct();
+            }
+        });
+
+        // Band merge controls
+        document.getElementById('band-merge-enabled').addEventListener('change', (e) => {
+            bandMergeEnabled = !!e.target.checked;
+            analyzeConstruct();
+        });
+        document.getElementById('band-merge-min').addEventListener('change', (e) => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v) && v >= 0 && v <= 50) {
+                bandMergeMinKDa = v;
+                analyzeConstruct();
+            }
+        });
+
+        // Color mode toggle
+        document.getElementById('rdg-color-mode').addEventListener('change', (e) => {
+            const mode = e.target.value;
+            window.RDGVizConfig = { mode };
+            drawRDG();
+            renderRDGSummary();
+        });
+
+        // Translon panel logic
+        function openTranslonPanel(t) {
+            const panel = document.getElementById('translon-panel');
+            if (!panel || !t) return;
+            panel.style.display = 'block';
+            panel.dataset.key = `${t.startNt}|${t.endNt}|${t.frame}`;
+            document.getElementById('translon-name').textContent = t.name || '—';
+            document.getElementById('translon-frame').textContent = t.frame;
+            document.getElementById('translon-start').textContent = t.startNt;
+            document.getElementById('translon-stop').textContent = t.stopNt || t.endNt;
+            const aaLen = Math.floor((t.endNt - t.startNt) / 3);
+            document.getElementById('translon-len').textContent = aaLen;
+            document.getElementById('translon-kozak').textContent = (t.kozakScore != null) ? t.kozakScore.toFixed(2) : '—';
+            const p = Math.round(((t.predictedAbundance ?? t.probability) || 0.3) * 100);
+            const range = document.getElementById('translon-prob-range');
+            const input = document.getElementById('translon-prob-input');
+            range.value = String(p);
+            input.value = String(p);
+
+            // Extra info from assembled sequence
+            try {
+                if (assembled && assembled.sequence) {
+                    const seq = assembled.sequence;
+                    const stopNt = t.stopNt || t.endNt;
+                    const stopCodon = (stopNt >= 3) ? seq.substring(stopNt-3, stopNt) : '—';
+                    // add stop codon after Kozak as appended text
+                    document.getElementById('translon-kozak').textContent += ` | Stop ${stopCodon}`;
+                }
+            } catch {}
+        }
+        (function wireTranslonPanel(){
+            const panel = document.getElementById('translon-panel');
+            if (!panel) return;
+            const range = document.getElementById('translon-prob-range');
+            const input = document.getElementById('translon-prob-input');
+            range.addEventListener('input', () => { input.value = range.value; });
+            input.addEventListener('input', () => {
+                let v = parseInt(input.value);
+                if (isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
+                range.value = String(v);
+            });
+            document.getElementById('translon-close').addEventListener('click', () => { panel.style.display = 'none'; });
+            document.getElementById('translon-remove').addEventListener('click', () => {
+                const key = panel.dataset.key;
+                if (!key) { panel.style.display = 'none'; return; }
+                const idx = wbCustomTranslons.findIndex(ct => `${ct.startNt}|${ct.endNt}|${ct.frame}` === key);
+                if (idx >= 0) {
+                    wbCustomTranslons.splice(idx, 1);
+                } else {
+                    // Suppress a built translon so it no longer renders
+                    wbSuppressedTranslons.add(key);
+                }
+                panel.style.display = 'none';
+                analyzeConstruct();
+            });
+            document.getElementById('translon-apply').addEventListener('click', () => {
+                const key = panel.dataset.key;
+                if (!key) { panel.style.display = 'none'; return; }
+                let v = parseInt(document.getElementById('translon-prob-input').value);
+                if (isNaN(v)) v = 0; v = Math.max(0, Math.min(100, v));
+                const edges = window.RDG_LAST_EDGES || [];
+                const hit = edges.find(e => e.type === 'translation' && `${e.translon.startNt}|${e.translon.endNt}|${e.translon.frame}` === key);
+                if (!hit) { panel.style.display = 'none'; return; }
+                const t = { ...hit.translon, predictedAbundance: v/100, predictedLUC: v/100, probability: v/100 };
+                const idx = wbCustomTranslons.findIndex(ct => `${ct.startNt}|${ct.endNt}|${ct.frame}` === key);
+                if (idx >= 0) wbCustomTranslons[idx] = t; else wbCustomTranslons.push(t);
+                panel.style.display = 'none';
+                analyzeConstruct();
+            });
+        })();
+
+        // Start mutation helpers
+        function startSafeCodonCandidates(seq, pos, orig) {
+            const stops = new Set(['UAA','UAG','UGA']);
+            const starts = new Set(Object.keys(RDGEngine.RDG_CONSTANTS.START_CODONS || {}));
+            const nts = ['A','U','G','C'];
+            const candidates = new Set();
+            // single-nt edits first
+            for (let i=0;i<3;i++) {
+                for (const n of nts) {
+                    if (n === orig[i]) continue;
+                    const cod = orig.substring(0,i) + n + orig.substring(i+1);
+                    if (stops.has(cod) || starts.has(cod)) continue;
+                    // quick overlap stop check in local window after this edit
+                    const mutated = seq.substring(0,pos) + cod + seq.substring(pos+3);
+                    if (createsLocalStop(mutated, pos)) continue;
+                    candidates.add(cod);
+                }
+            }
+            // two-nt edits if too few
+            const arr = Array.from(candidates);
+            if (arr.length < 3) {
+                for (const a of nts) for (const b of nts) {
+                    const cod = a + b + orig[2];
+                    if (cod === orig) continue;
+                    if (stops.has(cod) || starts.has(cod)) continue;
+                    const mutated = seq.substring(0,pos) + cod + seq.substring(pos+3);
+                    if (createsLocalStop(mutated, pos)) continue;
+                    candidates.add(cod);
+                    if (candidates.size >= 6) break;
+                }
+            }
+            return Array.from(candidates).slice(0,6);
+        }
+        function createsLocalStop(seq, pos){
+            const L = seq.length;
+            const stops = new Set(['UAA','UAG','UGA']);
+            // check a small neighborhood across frames
+            const start = Math.max(0, pos-2);
+            const end = Math.min(L-3, pos+3);
+            for (let i = start; i <= end; i++) {
+                const cod = seq.substring(i, i+3);
+                if (cod.length===3 && stops.has(cod)) return true;
+            }
+            return false;
+        }
+        function kozakAlternatives(seq, pos){
+            const res = [];
+            const L = seq.length;
+            // -3 position
+            const m3 = pos - 3;
+            if (m3 >= 0 && m3 < L) {
+                const cur = seq[m3];
+                ['C','U','A','G'].forEach(n => {
+                    if (n===cur) return;
+                    res.push({ label: `-3: ${cur}→${n}`, idx: m3, nt: n });
+                });
+            }
+            // +4 position
+            const p4 = pos + 3;
+            if (p4 >= 0 && p4 < L) {
+                const cur = seq[p4];
+                ['A','U','C','G'].forEach(n => {
+                    if (n===cur) return;
+                    res.push({ label: `+4: ${cur}→${n}`, idx: p4, nt: n });
+                });
+            }
+            return res;
+        }
+
+        function openStartMutationPanel(s) {
+            const panel = document.getElementById('start-mutation-panel');
+            if (!panel) return;
+            // Determine working sequence context
+            let workingSequence = sequence;
+            if (assembled && assembled.sequence) workingSequence = assembled.sequence;
+            const info = document.getElementById('start-mutation-info');
+            info.textContent = `Start at ${s.pos} • ${s.codon} • frame ${s.frame}`;
+            const codWrap = document.getElementById('start-mutation-codons');
+            codWrap.innerHTML = '';
+            const safe = startSafeCodonCandidates(workingSequence, s.pos, s.codon||'AUG');
+            if (safe.length === 0) {
+                const span = document.createElement('span'); span.style.color='#64748b'; span.textContent='No safe single-change codons found'; codWrap.appendChild(span);
+            } else {
+                safe.forEach(cod => {
+                    const btn = document.createElement('button');
+                    btn.className='secondary-btn'; btn.style.cssText='padding:0.25rem 0.5rem;'; btn.textContent = cod;
+                    btn.onclick = () => { mutations[s.pos] = cod; panel.style.display='none'; analyzeConstruct(); };
+                    codWrap.appendChild(btn);
+                });
+            }
+            const kozakWrap = document.getElementById('start-mutation-kozak');
+            kozakWrap.innerHTML = '';
+            const ko = kozakAlternatives(workingSequence, s.pos);
+            ko.forEach(opt => {
+                const btn = document.createElement('button'); btn.className='secondary-btn'; btn.style.cssText='padding:0.25rem 0.5rem;'; btn.textContent = opt.label;
+                btn.onclick = () => { ntMutations[opt.idx] = opt.nt; panel.style.display='none'; analyzeConstruct(); };
+                kozakWrap.appendChild(btn);
+            });
+            panel.style.display = 'block';
+            document.getElementById('start-mutation-close').onclick = () => { panel.style.display='none'; };
         }
 
         // ====================================================================
@@ -812,25 +1707,612 @@
         // WESTERN BLOT GENERATION
         // ====================================================================
 
+        // Aggregate translon-derived products into discrete western bands
+        // - Filters by antibody target (RLUC, FLUC, BOTH)
+        // - Groups by reporters set and MW bucket to avoid duplicate bands
+        function aggregateProducts(products, antibody) {
+            // 1) Only western-detectable when available; tolerate pre-aggregated inputs
+            const detectable = products.filter(p => (p.detectable === undefined ? true : !!p.detectable));
+
+            // 2) Antibody filter rules
+            const abFilter = (p) => {
+                const hasRLUC = p.reporters.includes('RLUC');
+                const hasFLUC = p.reporters.includes('FLUC');
+                if (antibody === 'RLUC') return hasRLUC;
+                if (antibody === 'FLUC') return hasFLUC;
+                return hasRLUC || hasFLUC; // BOTH
+            };
+
+            // 3) Grouping: reporters signature + MW bucket
+            const toKey = (p) => {
+                const reps = [...p.reporters].sort().join('+');
+                // bucket MW to nearest 0.5 kDa to merge tiny differences
+                const mwBucket = (Math.round(p.mw * 2) / 2).toFixed(1);
+                return `${reps}|${mwBucket}`;
+            };
+
+            const groups = new Map();
+            for (const p of detectable) {
+                if (!abFilter(p)) continue;
+                const key = toKey(p);
+                const g = groups.get(key) || { name: p.name, reporters: [...p.reporters], mw: p.mw, abundance: 0 };
+                g.abundance += Math.max(0, p.abundance || 0);
+                // keep canonical label (reporter names) and stable mw
+                groups.set(key, g);
+            }
+
+            return Array.from(groups.values());
+        }
+
         function generateWesternBlot() {
-            // Predict protein products using RDG engine
+            // Predict protein products using RDG engine on assembled construct
             const constructMap = {};
-            constructRegions.forEach(region => {
-                constructMap[region.type] = { start: region.start - 1, end: region.end };
+            const vizRegions = (assembled && assembled.regions) || [];
+            vizRegions.forEach(region => {
+                constructMap[region.type] = { start: region.start, end: region.end };
             });
 
-            const products = RDGEngine.predictProteinProducts(translons, constructMap);
+            let products = RDGEngine.predictProteinProducts(translons, constructMap);
+            // Aggregate and filter by antibody
+            const antibody = document.getElementById('antibody-select').value;
+            products = aggregateProducts(products, antibody);
 
             // Draw multi-construct gel if we have saved constructs
             if (savedConstructs.length > 0) {
-                drawMultiConstructGel([...savedConstructs, { name: 'Current', products }]);
+                // Re-aggregate saved constructs with current antibody
+                const antibody = document.getElementById('antibody-select').value;
+                const lanes = savedConstructs.map((c, idx) => ({
+                    name: c.name,
+                    experiment: c.experiment,
+                    products: aggregateProducts(c.products, antibody),
+                    assembled: c.assembled,
+                    translons: c.translons || []
+                }));
+                lanes.push({ name: 'Current', experiment: experimentName, products, assembled, translons });
+                drawMultiConstructGel(lanes);
             } else {
                 drawSingleGel(products);
             }
 
+            // Update RDG select dropdown with lanes
+            const rdgSel = document.getElementById('rdg-construct-select');
+            rdgSel.innerHTML = '';
+            const addOpt = (label, idx) => {
+                const opt = document.createElement('option');
+                opt.value = String(idx);
+                opt.textContent = label;
+                rdgSel.appendChild(opt);
+            };
+            const lanesForSelect = savedConstructs.map((c, i) => ({ label: `${c.experiment || 'Experiment'} – ${c.name}`, assembled: c.assembled }));
+            lanesForSelect.push({ label: `${experimentName} – Current`, assembled });
+            lanesForSelect.forEach((lane, i) => addOpt(lane.label, i));
+
+            rdgSel.onchange = () => {
+                const idx = parseInt(rdgSel.value);
+                // Rebuild the same lanes ordering to resolve index
+            const lanes = savedConstructs.map(c => ({ name: c.name, experiment: c.experiment, assembled: c.assembled }));
+            lanes.push({ name: 'Current', experiment: experimentName, assembled });
+            const lane = lanes[idx];
+                if (lane && lane.assembled) {
+                    viewRDGForConstruct(lane);
+                    renderRDGSummary();
+                }
+            };
+
             // Update table
             updateBandTable();
+
+            // Update RDG Summary grid
+            renderRDGSummary();
+
+            // Update compare matrix
+            renderCompareMatrix();
         }
+
+        function buildLanesForCompare() {
+            const antibody = document.getElementById('antibody-select').value;
+            const lanes = savedConstructs.map((c) => {
+                // Re-aggregate products for current antibody
+                const prods = aggregateProducts(c.products || [], antibody);
+                return { name: c.name, experiment: c.experiment, products: prods, assembled: c.assembled, translons: c.translons || [] };
+            });
+            // Current lane
+            const constructMap = {};
+            const vizRegions = (assembled && assembled.regions) || [];
+            vizRegions.forEach(region => { constructMap[region.type] = { start: region.start, end: region.end }; });
+            const currentProductsRaw = RDGEngine.predictProteinProducts(translons, constructMap);
+            const currentProducts = aggregateProducts(currentProductsRaw, antibody);
+            lanes.push({ name: 'Current', experiment: experimentName, products: currentProducts, assembled, translons });
+            return lanes;
+        }
+
+        function laneMetrics(lane) {
+            const prods = lane.products || [];
+            const rluc = prods.filter(p => p.reporters.includes('RLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+            const fluc = prods.filter(p => p.reporters.includes('FLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+            const bands = prods.length;
+            const rt = Array.isArray(wbReadthroughStops) ? wbReadthroughStops.length : 0; // global RT count
+            return { rluc, fluc, bands, rt };
+        }
+
+        function renderCompareMatrix() {
+            const table = document.getElementById('compare-matrix');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            const lanes = buildLanesForCompare();
+
+            // Baseline defaults to first saved or current if none
+            if (baselineIndex == null || baselineIndex < 0 || baselineIndex >= lanes.length) {
+                baselineIndex = 0; // pick first row by default
+            }
+            const base = lanes[baselineIndex];
+            const baseM = laneMetrics(base);
+
+            // Sorting
+            const key = compareSortKey; const dir = compareSortDir;
+            const valFor = (lane) => {
+                const m = laneMetrics(lane);
+                switch (key) {
+                    case 'rluc': return m.rluc; case 'fluc': return m.fluc; case 'bands': return m.bands; case 'rt': return m.rt; case 'drluc': return m.rluc - baseM.rluc; case 'dfluc': return m.fluc - baseM.fluc; default: return (lane.experiment||'') + ' – ' + (lane.name||'');
+                }
+            };
+            const sorted = lanes.map((l, i) => ({ lane: l, idx: i })).sort((a,b) => {
+                const av = valFor(a.lane), bv = valFor(b.lane);
+                if (typeof av === 'number' && typeof bv === 'number') return dir==='asc' ? av - bv : bv - av;
+                const as = String(av).localeCompare(String(bv));
+                return dir==='asc' ? as : -as;
+            });
+
+            // Render rows
+            sorted.forEach(({ lane, idx }) => {
+                const tr = document.createElement('tr');
+                const m = laneMetrics(lane);
+                const dRLUC = m.rluc - baseM.rluc;
+                const dFLUC = m.fluc - baseM.fluc;
+                const isBase = (idx === baselineIndex);
+                tr.innerHTML = `
+                    <td><input type="radio" name="baseline" ${isBase ? 'checked' : ''} data-idx="${idx}" title="Set as baseline"></td>
+                    <td><strong>${lane.experiment || 'Experiment'}</strong> – ${lane.name || ''}</td>
+                    <td>${(m.rluc*100).toFixed(1)}</td>
+                    <td style="color:${dRLUC>=0?'#16a34a':'#dc2626'};">${isBase? '—' : (dRLUC>=0? '▲' : '▼')} ${isBase? '' : Math.abs(dRLUC*100).toFixed(1)}</td>
+                    <td>${(m.fluc*100).toFixed(1)}</td>
+                    <td style="color:${dFLUC>=0?'#16a34a':'#dc2626'};">${isBase? '—' : (dFLUC>=0? '▲' : '▼')} ${isBase? '' : Math.abs(dFLUC*100).toFixed(1)}</td>
+                    <td>${m.bands}</td>
+                    <td>${m.rt}</td>
+                `;
+                // Row click switches main RDG/gel to that lane
+                tr.addEventListener('click', (ev) => {
+                    if (ev.target && ev.target.name === 'baseline') return; // radio handled separately
+                    const rdgSel = document.getElementById('rdg-construct-select');
+                    if (rdgSel) { rdgSel.value = String(idx); rdgSel.onchange && rdgSel.onchange(); }
+                });
+                tbody.appendChild(tr);
+            });
+
+            // Baseline radios
+            tbody.querySelectorAll('input[name="baseline"]').forEach(r => {
+                r.addEventListener('change', (e) => {
+                    const i = parseInt(e.target.dataset.idx);
+                    if (!isNaN(i)) { baselineIndex = i; renderCompareMatrix(); renderRDGSummary(); }
+                });
+            });
+
+            // Header sorting
+            table.querySelectorAll('th[data-key]').forEach(th => {
+                th.style.cursor = 'pointer';
+                th.onclick = () => {
+                    const k = th.getAttribute('data-key');
+                    if (compareSortKey === k) { compareSortDir = (compareSortDir === 'asc' ? 'desc' : 'asc'); } else { compareSortKey = k; compareSortDir = 'desc'; }
+                    renderCompareMatrix();
+                };
+            });
+        }
+
+        function renderRDGSummary() {
+            const container = document.getElementById('rdg-summary');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Determine selected lane: saved constructs (0..n-1) then current (n)
+            const rdgSel = document.getElementById('rdg-construct-select');
+            const selectedIndex = rdgSel && rdgSel.options.length ? parseInt(rdgSel.value || String(savedConstructs.length)) : savedConstructs.length;
+            const lanes = savedConstructs.map((c) => ({
+                label: `${c.experiment || 'Experiment'} – ${c.name}`,
+                assembled: c.assembled,
+                translons: c.translons || [],
+                products: c.products || []
+            }));
+            lanes.push({ label: `${experimentName} – Current`, assembled, translons, products: (() => {
+                try {
+                    const map = {}; (assembled?.regions||[]).forEach(r => map[r.type] = { start:r.start, end:r.end });
+                    return RDGEngine.predictProteinProducts(translons, map);
+                } catch { return []; }
+            })() });
+
+            const lane = lanes[Math.max(0, Math.min(lanes.length-1, isNaN(selectedIndex)? lanes.length-1 : selectedIndex))];
+            if (!lane || !lane.assembled || !lane.assembled.sequence) return;
+
+            // Layout container: grid with mini-RDG, gel lane, construct map, metrics + interventions
+            const panel = document.createElement('div');
+            panel.style.cssText = 'background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.75rem; display:grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto auto auto; gap:0.75rem;';
+            const title = document.createElement('div');
+            title.textContent = lane.label;
+            title.style.cssText = 'grid-column: 1 / -1; font-weight:700; color:#334155;';
+            panel.appendChild(title);
+
+            // Mini RDG
+            const rdgCanv = document.createElement('canvas');
+            rdgCanv.width = 900; rdgCanv.height = 240;
+            rdgCanv.style.cssText = 'width:100%; height:auto;';
+            panel.appendChild(rdgCanv);
+
+            // Gel lane mini
+            const gelCanv = document.createElement('canvas');
+            gelCanv.width = 280; gelCanv.height = 240;
+            gelCanv.style.cssText = 'width:100%; height:auto; background:#1a1a1a;';
+            panel.appendChild(gelCanv);
+
+            // Construct map
+            const mapCanv = document.createElement('canvas');
+            mapCanv.width = 900; mapCanv.height = 110;
+            mapCanv.style.cssText = 'width:100%; height:auto; grid-column: 1 / span 1;';
+            panel.appendChild(mapCanv);
+
+            // Metrics
+            const metrics = document.createElement('div');
+            metrics.style.cssText = 'grid-column: 2 / span 1; color:#0f172a;';
+            panel.appendChild(metrics);
+
+            // Interventions accordion (collapsed by default)
+            const interv = document.createElement('div');
+            interv.style.cssText = 'grid-column: 1 / -1;';
+            interv.innerHTML = `
+              <details>
+                <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; gap:0.5rem;">
+                  <span style="font-weight:600; color:#334155;">Interventions</span>
+                  <span id="interventions-badge" style="background:#e2e8f0; color:#334155; border-radius:999px; padding:0 8px; font-size:12px;">0</span>
+                </summary>
+                <div id="interventions-content" style="margin-top:0.5rem;"></div>
+              </details>`;
+            panel.appendChild(interv);
+
+            container.appendChild(panel);
+
+            // Draw mini RDG (filtered)
+            try {
+                const ctx2 = rdgCanv.getContext('2d');
+                const seq = lane.assembled.sequence;
+                const feats = RDGEngine.identifyFeatures(seq);
+                const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(seq);
+                const ensure = (lane.assembled.regions || []).filter(r => ['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC'].includes(r.type)).map(r => r.start);
+                let trans = lane.translons && lane.translons.length ? lane.translons : RDGEngine.buildTranslons(seq, { features: feats, startCodons: starts, limit: translonLimit, ensureStarts: ensure });
+                trans = filterIndistinguishableTranslons(trans, lane.assembled);
+                RDGViz.drawTreeLayout(ctx2, rdgCanv, trans, seq, starts, FRAME_COLORS, lane.assembled.regions, wbReadthroughStops, []);
+            } catch (e) {
+                const ctx2 = rdgCanv.getContext('2d');
+                ctx2.fillStyle = '#ef4444'; ctx2.fillText('RDG render failed', 10, 20);
+            }
+
+            // Draw mini gel lane
+            try {
+                const gctx = gelCanv.getContext('2d');
+                // background lane area
+                gctx.fillStyle = '#1a1a1a';
+                gctx.fillRect(0,0,gelCanv.width, gelCanv.height);
+                // single lane centered
+                drawMWMarkers(gctx, 28, gelCanv.height);
+                const laneX = Math.floor(gelCanv.width/2);
+                const products = (() => {
+                    const antibody = document.getElementById('antibody-select').value;
+                    const constructMap = {}; (lane.assembled.regions||[]).forEach(r => constructMap[r.type] = { start:r.start, end:r.end });
+                    // Predict from filtered translons for this lane
+                    const baseTrans = lane.translons && lane.translons.length ? lane.translons : translons;
+                    const filtTrans = filterIndistinguishableTranslons(baseTrans, lane.assembled);
+                    const prods = RDGEngine.predictProteinProducts(filtTrans, constructMap);
+                    return aggregateProducts(prods, antibody);
+                })();
+                drawGelLane(gctx, gelCanv, products, laneX, lane.label);
+            } catch (e) { /* ignore */ }
+
+            // Draw construct map
+            try {
+                const mctx = mapCanv.getContext('2d');
+                const assembledRef = lane.assembled;
+                // simple map bar
+                const x = 10, y = 20, w = mapCanv.width - 20, h = 40;
+                mctx.strokeStyle = '#cbd5e1'; mctx.strokeRect(x, y, w, h);
+                const total = assembledRef.sequence.length;
+                const colorFor = (type) => {
+                    if (!type) return '#64748b';
+                    if (String(type).startsWith('RLUC')) return '#2563EB';
+                    switch(type){ case 'FLUC':return '#DC2626'; case 'LINKER':return '#F59E0B'; case '5UTR':return '#94A3B8'; case '3UTR':return '#CBD5E1'; default:return '#6B7280'; }
+                };
+                (assembledRef.regions||[]).forEach(r => {
+                    const rs = (r.assembled ? r.start : (r.start - 1));
+                    const re = r.end;
+                    const x1 = x + Math.floor((rs/total) * w);
+                    const x2 = x + Math.floor((re/total) * w);
+                    const cw = Math.max(1, x2 - x1);
+                    const col = r.color || colorFor(r.type);
+                    mctx.fillStyle = col; mctx.globalAlpha = 0.2; mctx.fillRect(x1, y, cw, h);
+                    mctx.globalAlpha = 1; mctx.strokeStyle = col; mctx.lineWidth = 2; mctx.strokeRect(x1, y, cw, h);
+                });
+                mctx.fillStyle = '#334155'; mctx.font = 'bold 11px sans-serif'; mctx.fillText('Construct map', 10, 14);
+            } catch (e) { /* ignore */ }
+
+            // Metrics with baseline deltas and quick actions
+            try {
+                const antibody = document.getElementById('antibody-select').value;
+                const constructMap = {}; (lane.assembled.regions||[]).forEach(r => constructMap[r.type] = { start:r.start, end:r.end });
+                const baseTrans2 = lane.translons && lane.translons.length ? lane.translons : translons;
+                const filtTrans2 = filterIndistinguishableTranslons(baseTrans2, lane.assembled);
+                const allProds = RDGEngine.predictProteinProducts(filtTrans2, constructMap);
+                const prods = aggregateProducts(allProds, antibody);
+                const rluc = prods.filter(p => p.reporters.includes('RLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+                const fluc = prods.filter(p => p.reporters.includes('FLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+                const top = (filterIndistinguishableTranslons(lane.translons||[], lane.assembled)).slice().sort((a,b)=> (b.predictedAbundance||0)-(a.predictedAbundance||0)).slice(0,3);
+                // Deltas vs baseline
+                const lanes = buildLanesForCompare();
+                const bi = (baselineIndex==null? lanes.length-1 : Math.max(0, Math.min(lanes.length-1, baselineIndex)));
+                const base = lanes[bi];
+                const bprods = base ? base.products : [];
+                const brluc = bprods.filter(p => p.reporters.includes('RLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+                const bfluc = bprods.filter(p => p.reporters.includes('FLUC')).reduce((a,b)=>a+(b.abundance||0),0);
+                const dRLUC = rluc - brluc;
+                const dFLUC = fluc - bfluc;
+                metrics.innerHTML = `
+                    <div style="font-weight:600; color:#334155; margin-bottom:0.25rem;">Summary</div>
+                    <div style="font-size:12px; color:#475569;">
+                        <div>RLUC total: ${(rluc*100).toFixed(1)}% <span style="color:${dRLUC>=0?'#16a34a':'#dc2626'};">${(dRLUC===0||isNaN(dRLUC))?'':'('+(dRLUC>=0?'▲ ':'▼ ')+Math.abs(dRLUC*100).toFixed(1)+'%)'}</span></div>
+                        <div>FLUC total: ${(fluc*100).toFixed(1)}% <span style="color:${dFLUC>=0?'#16a34a':'#dc2626'};">${(dFLUC===0||isNaN(dFLUC))?'':'('+(dFLUC>=0?'▲ ':'▼ ')+Math.abs(dFLUC*100).toFixed(1)+'%)'}</span></div>
+                        <div>Bands (current Ab): ${prods.length}</div>
+                        <div style="margin-top:0.25rem; font-weight:600; color:#334155;">Top translons</div>
+                        ${top.map(t => `<div style='white-space:nowrap;'>${t.name||''} • start ${t.startNt} • frame ${t.frame} • ${(((t.endNt-t.startNt)/3)*0.110).toFixed(1)} kDa • ${(((t.predictedAbundance||t.probability)||0)*100).toFixed(1)}%</div>`).join('')}
+                        <div style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <button class="secondary-btn" id="summary-baseline-btn" style="padding:0.25rem 0.5rem;">Set as baseline</button>
+                            <button class="secondary-btn" id="summary-switch-btn" style="padding:0.25rem 0.5rem;">Switch to this lane</button>
+                        </div>
+                    </div>`;
+                // Wire actions
+                const rdgSel = document.getElementById('rdg-construct-select');
+                const allLanes = savedConstructs.map((c) => ({ assembled: c.assembled })).concat([{ assembled }]);
+                const selectedIndex = (rdgSel && rdgSel.options.length) ? parseInt(rdgSel.value || String(savedConstructs.length)) : savedConstructs.length;
+                const laneIndex = selectedIndex;
+                const baselineBtn = document.getElementById('summary-baseline-btn');
+                const switchBtn = document.getElementById('summary-switch-btn');
+                baselineBtn.onclick = () => { baselineIndex = laneIndex; renderCompareMatrix(); renderRDGSummary(); };
+                switchBtn.onclick = () => { if (rdgSel) { rdgSel.value = String(laneIndex); rdgSel.onchange && rdgSel.onchange(); } };
+            } catch (e) { metrics.textContent = 'Metrics unavailable'; }
+
+            // Interventions content (top starts, show all, restore all)
+            try {
+                const content = panel.querySelector('#interventions-content');
+                const badge = panel.querySelector('#interventions-badge');
+                const mutCount = Object.keys(mutations||{}).length + Object.keys(ntMutations||{}).length;
+                badge.textContent = String(mutCount);
+
+                const feats = RDGEngine.identifyFeatures(lane.assembled.sequence);
+                const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(lane.assembled.sequence);
+                const sorted = starts.slice().sort((a,b)=>{
+                    const pb = (b.initiationProbability||0) - (a.initiationProbability||0);
+                    if (pb!==0) return pb;
+                    return (b.kozakScore||0) - (a.kozakScore||0);
+                });
+                const topN = 8;
+                const list = document.createElement('div');
+                list.style.cssText = 'display:grid; grid-template-columns: 1fr auto; gap:0.4rem;';
+                const addRow = (s) => {
+                    const row = document.createElement('div');
+                    row.style.display = 'contents';
+                    const label = document.createElement('div');
+                    const isMut = !!mutations[s.pos];
+                    label.innerHTML = `<code>pos ${s.pos} • ${s.codon}</code> <span style="color:#64748b;">Kozak ${(s.kozakScore||0).toFixed(2)}</span>`;
+                    const btn = document.createElement('button');
+                    btn.className = 'secondary-btn';
+                    btn.style.cssText = 'padding:0.25rem 0.5rem;';
+                    btn.textContent = isMut ? 'Restore' : 'Mutate → AAG';
+                    btn.onclick = () => { window.toggleMutation(s.pos, s.codon||'AUG'); };
+                    row.appendChild(label); row.appendChild(btn);
+                    list.appendChild(row);
+                };
+                sorted.slice(0, topN).forEach(addRow);
+
+                const controls = document.createElement('div');
+                controls.style.cssText = 'margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;';
+                const showAll = document.createElement('button'); showAll.className='secondary-btn'; showAll.style.cssText='padding:0.25rem 0.5rem;'; showAll.textContent='Show all starts';
+                const restoreAll = document.createElement('button'); restoreAll.className='secondary-btn'; restoreAll.style.cssText='padding:0.25rem 0.5rem;'; restoreAll.textContent='Restore all';
+                showAll.onclick = () => { list.innerHTML=''; sorted.forEach(addRow); };
+                restoreAll.onclick = () => { mutations = {}; ntMutations = {}; analyzeConstruct(); };
+                controls.appendChild(showAll); controls.appendChild(restoreAll);
+
+                content.innerHTML = '';
+                content.appendChild(list);
+                content.appendChild(controls);
+            } catch {}
+        }
+
+        // React to antibody selector changes
+        document.getElementById('antibody-select').addEventListener('change', () => {
+            if (translons && translons.length) {
+                generateWesternBlot();
+            }
+        });
+
+        // Reporter source selection (available in input and construct phases)
+        (function reporterSource(){
+          const sel1 = document.getElementById('reporter-source');
+          const sel2 = document.getElementById('reporter-source-construct');
+          const btn1 = document.getElementById('reporter-edit-btn');
+          const btn2 = document.getElementById('reporter-edit-btn-construct');
+
+          // Optional: provide canonical CDS inline (RNA). Replace with your lab's sequences if needed.
+          const CANONICAL = {
+            // Canonical CDS (RNA alphabet) from NCBI
+            RLUC: 'AUGACUUCGAAAGUUUAUGAUCCAGAACAAAGGAAACGGAUGAUAACUGGUCCGCAGUGGUGGGCCAGAUGUAAACAAAUGAAUGUUCUUGAUUCAUUUAUUAAUUAUUAUGAUUCAGAAAAACAUGCAGAAAAUGCUGUUAUUUUUUUACAUGGUAACGCGGCCUCUUCUUAUUUAUGGCGACAUGUUGUGCCACAUAUUGAGCCAGUAGCGCGGUGUAUUAUACCAGAUCUUAUUGGUAUGGGCAAAUCAGGCAAAUCUGGUAAUGGUUCUUAUAGGUUACUUGAUCAUUACAAAUAUCUUACUGCAUGGUUUGAACUUCUUAAUUUACCAAAGAAGAUCAUUUUUGUCGGCCAUGAUUGGGGUGCUUGUUUGGCAUUUCAUUAUAGCUAUGAGCAUCAAGAUAAGAUCAAAGCAAUAGUUCACGCUGAAAGUGUAGUAGAUGUGAUUGAAUCAUGGGAUGAAUGGCCUGAUAUUGAAGAAGAUAUUGCGUUGAUCAAAUCUGAAGAAGGAGAAAAAAUGGUUUUGGAGAAUAACUUCUUCGUGGAAACCAUGUUGCCAUCAAAAAUCAUGAGAAAGUUAGAACCAGAAGAAUUUGCAGCAUAUCUUGAACCAUUCAAAGAGAAAGGUGAAGUUCGUCGUCCAACAUUAUCAUGGCCUCGUGAAAUCCCGUUAGUAAAAGGUGGUAAACCUGACGUUGUACAAAUUGUUAGGAAUUAUAAUGCUUAUCUACGUGCAAGUGAUGAUUUACCAAAAAUGUUUAUUGAAUCGGAUCCAGGAUUCUUUUCCAAUGCUAUUGUUGAAGGCGCCAAGAAGUUUCCUAAUACUGAAUUUGUCAAAGUAAAAGGUCUUCAUUUUUCGCAAGAAGAUGCACCUGAUGAAAUGGGAAAAUAUAUCAAAUCGUUCGUUGAGCGAGUUCUCAAAAAUGAACAAUAA',
+            FLUC: 'AUGGAAGACGCCAAAAACAUAAAGAAAGGCCCGGCGCCAUUCUAUCCUCUAGAGGAUGGAACCGCUGGAGAGCAACUGCAUAAGGCUAUGAAGAGAUACGCCCUGGUUCCUGGAACAAUUGCUUUUACAGAUGCACAUAUCGAGGUGAACAUCACGUACGCGGAAUACUUCGAAAUGUCCGUUCGGUUGGCAGAAGCUAUGAAACGAUAUGGGCUGAAUACAAAUCACAGAAUCGUCGUAUGCAGUGAAAACUCUCUUCAAUUCUUUAUGCCGGUGUUGGGCGCGUUAUUUAUCGGAGUUGCAGUUGCGCCCGCGAACGACAUUUAUAAUGAACGUGAAUUGCUCAACAGUAUGAACAUUUCGCAGCCUACCGUAGUGUUUGUUUCCAAAAAGGGGUUGCAAAAAAUUUUGAACGUGCAAAAAAAAUUACCAAUAAUCCAGAAAAUUAUUAUCAUGGAUUCUAAAACGGAUUACCAGGGAUUUCAGUCGAUGUACACGUUCGUCACAUCUCAUCUACCUCCCGGUUUUAAUGAAUACGAUUUUGUACCAGAGUCCUUUGAUCGUGACAAAACAAUUGCACUGAUAAUGAAUUCCUCUGGAUCUACUGGGUUACCUAAGGGUGUGGCCCUUCCGCAUAGAACUGCCUGCGUCAGAUUCUCGCAUGCCAGAGAUCCUAUUUUUGGCAAUCAAAUCAUUCCGGAUACUGCGAUUUUAAGUGUUGUUCCAUUCCAUCACGGUUUUGGAAUGUUUACUACACUCGGAUAUUUGAUAUGUGGAUUUCGAGUCGUCUUAAUGUAUAGAUUUGAAGAAGAGCUGUUUUUACGAUCCCUUCAGGAUUACAAAAUUCAAAGUGCGUUGCUAGUACCAACCCUAUUUUCAUUCUUCGCCAAAAGCACUCUGAUUGACAAAUACGAUUUAUCUAAUUUACACGAAAUUGCUUCUGGGGGCGCACCUCUUUCGAAAGAAGUCGGGGAAGCGGUUGCAAAACGCUUCCAUCUUCCAGGGAUACGACAAGGAUAUGGGCUCACUGAGACUACAUCAGCUAUUCUGAUUACACCCGAGGGGGAUGAUAAACCGGGCGCGGUCGGUAAAGUUGUUCCAUUUUUUGAAGCGAAGGUUGUGGAUCUGGAUACCGGGAAAACGCUGGGCGUUAAUCAGAGAGGCGAAUUAUGUGUCAGAGGACCUAUGAUUAUGUCCGGUUAUGUAAACAAUCCGGAAGCGACCAACGCCUUGAUUGACAAGGAUGGAUGGCUACAUUCUGGAGACAUAGCUUACUGGGACGAAGACGAACACUUCUUCAUAGUUGACCGCUUGAAGUCUUUAAUUAAAUACAAAGGAUAUCAGGUGGCCCCCGCUGAAUUGGAAUCGAUAUUGUUACAACACCCCAACAUCUUCGACGCGGGCGUGGCAGGUCUUCCCGACGAUGACGCCGGUGAACUUCCCGCCGCCGUUGUUGUUUUGGAGCACGGAAAGACGAUGACGGAAAAAGAGAUCGUGGAUUACGUCGCCAGUCAAGUAACAACCGCGAAAAAGUUGCGCGGAGGAGUUGUGUUUGUGGACGAAGUACCGAAAGGUCUUACCGGAAAACUCGACGCAAGAAAAAUCAGAGAGAUCCUCAUAAAGGCCAAGAAGGGCGGAAAGUCCAAAUUGUAA'
+          };
+          function applySource(val) {
+            if (val === 'synthetic') {
+              window.REPORTER_CDS = null;
+            } else if (val === 'canonical') {
+              if (!CANONICAL.RLUC || !CANONICAL.FLUC) {
+                alert('Canonical RLUC/FLUC CDS not embedded. Choose Custom to paste your sequences.');
+                return;
+              }
+              window.REPORTER_CDS = { RLUC: CANONICAL.RLUC, FLUC: CANONICAL.FLUC };
+            } else if (val === 'custom') {
+              const rl = prompt('Paste RLUC coding sequence (DNA/RNA, no introns):');
+              if (!rl) return;
+              const fl = prompt('Paste FLUC coding sequence (DNA/RNA, no introns):');
+              if (!fl) return;
+              window.REPORTER_CDS = { RLUC: rl, FLUC: fl };
+            }
+            // Re-analyze to rebuild assembled with selected library
+            if (sequence && constructRegions.length) analyzeConstruct();
+          }
+          function syncSelects(val) {
+            if (sel1) sel1.value = val;
+            if (sel2) sel2.value = val;
+          }
+          function onChange(e) {
+            const v = e.target.value;
+            applySource(v);
+            syncSelects(v);
+          }
+          if (sel1) sel1.addEventListener('change', onChange);
+          if (sel2) sel2.addEventListener('change', onChange);
+          if (btn1) btn1.addEventListener('click', () => { if (sel1) { sel1.value = 'custom'; onChange({ target: sel1 }); } });
+          if (btn2) btn2.addEventListener('click', () => { if (sel2) { sel2.value = 'custom'; onChange({ target: sel2 }); } });
+          // Initialize selectors to Canonical by default (embedded sequences)
+          syncSelects('canonical');
+          applySource('canonical');
+        })();
+
+        // Export multi-panel figure (PNG)
+        document.getElementById('export-figure-btn').addEventListener('click', () => {
+            try {
+                // Build lanes as used by gel renderer (saved + current)
+                const antibody = document.getElementById('antibody-select').value;
+                const constructMap = {};
+                const vizRegions = (assembled && assembled.regions) || [];
+                vizRegions.forEach(region => {
+                    constructMap[region.type] = { start: region.start, end: region.end };
+                });
+                let products = RDGEngine.predictProteinProducts(translons, constructMap);
+
+                const lanes = savedConstructs.map(c => ({
+                    name: c.name,
+                    experiment: c.experiment,
+                    products: (function(){
+                        try {
+                            const map = {};
+                            (c.assembled?.regions||[]).forEach(r => { map[r.type] = { start:r.start, end:r.end }; });
+                            return RDGEngine.predictProteinProducts(c.translons || [], map);
+                        } catch { return c.products || []; }
+                    })(),
+                    assembled: c.assembled,
+                    translons: c.translons || []
+                }));
+                lanes.push({ name: 'Current', experiment: experimentName, products, assembled, translons });
+
+                if (window.RDGFigure && typeof RDGFigure.exportFigurePNG === 'function') {
+                    RDGFigure.exportFigurePNG({ lanes, focusIndex: lanes.length - 1, antibody, filename: 'translation_figure.png' });
+                } else {
+                    alert('Figure composer not available');
+                }
+            } catch (e) {
+                console.error('Export figure failed', e);
+                alert('Export figure failed: ' + (e?.message || 'Unknown error'));
+            }
+        });
+
+        // Load a saved construct into the editor for modification
+        function refreshEditConstructSelect() {
+            const sel = document.getElementById('edit-construct-select');
+            sel.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = '-- select saved --';
+            sel.appendChild(placeholder);
+            savedConstructs.forEach((c, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = `${c.experiment || 'Experiment'} – ${c.name}`;
+                sel.appendChild(opt);
+            });
+            // Add current as a reference option
+            const cur = document.createElement('option');
+            cur.value = 'current';
+            cur.textContent = `${experimentName} – Current`;
+            sel.appendChild(cur);
+        }
+        document.getElementById('load-construct-btn').addEventListener('click', () => {
+            const sel = document.getElementById('edit-construct-select');
+            if (sel.value === 'current') {
+                // Already in editor; just re-analyze to sync
+                analyzeConstruct();
+                return;
+            }
+            const idx = parseInt(sel.value);
+            if (isNaN(idx)) return;
+            const c = savedConstructs[idx];
+            if (!c) return;
+            // Load regions and mutations into editor and set experiment
+            experimentName = c.experiment || experimentName;
+            constructRegions = JSON.parse(JSON.stringify(c.regions));
+            mutations = JSON.parse(JSON.stringify(c.mutations || {}));
+            ntMutations = JSON.parse(JSON.stringify(c.ntMutations || {}));
+            renderConstructRegions();
+            analyzeConstruct();
+        });
+
+        // ===============================
+        // FASTA DOWNLOAD
+        // ===============================
+        function wrapFASTA(name, seq) {
+            const lines = [];
+            lines.push(`>${name}`);
+            for (let i = 0; i < seq.length; i += 60) {
+                lines.push(seq.substring(i, i + 60));
+            }
+            return lines.join('\n');
+        }
+
+        function generateFASTA(includeSaved, formatDNA) {
+            const parts = [];
+            const toFormat = (s) => formatDNA ? s.replace(/U/g,'T') : s;
+
+            if (assembled && assembled.sequence) {
+                parts.push(wrapFASTA('Current_Construct', toFormat(assembled.sequence)));
+            }
+
+            if (includeSaved) {
+                savedConstructs.forEach((c, idx) => {
+                    const asmSeq = (c.assembled && c.assembled.sequence) ? c.assembled.sequence : null;
+                    if (asmSeq) {
+                        const name = c.name ? c.name.replace(/\s+/g,'_') : `Saved_${idx+1}`;
+                        parts.push(wrapFASTA(name, toFormat(asmSeq)));
+                    }
+                });
+            }
+
+            return parts.join('\n');
+        }
+
+        document.getElementById('download-fasta-btn').addEventListener('click', () => {
+            const formatDNA = document.getElementById('fasta-format').value === 'DNA';
+            const fasta = generateFASTA(true, formatDNA);
+            if (!fasta || fasta.length === 0) { alert('No assembled constructs to download yet.'); return; }
+            const blob = new Blob([fasta], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'constructs.fasta';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+        });
 
         // Save current construct for comparison
         document.getElementById('save-construct-btn').addEventListener('click', () => {
@@ -838,16 +2320,22 @@
             if (!name) return;
 
             const constructMap = {};
-            constructRegions.forEach(region => {
-                constructMap[region.type] = { start: region.start - 1, end: region.end };
+            const vizRegions = (assembled && assembled.regions) || [];
+            vizRegions.forEach(region => {
+                constructMap[region.type] = { start: region.start, end: region.end };
             });
 
-            const products = RDGEngine.predictProteinProducts(translons, constructMap);
+            let products = RDGEngine.predictProteinProducts(translons, constructMap);
+            const antibody = document.getElementById('antibody-select').value;
+            products = aggregateProducts(products, antibody);
 
             savedConstructs.push({
                 name,
+                experiment: experimentName,
                 regions: JSON.parse(JSON.stringify(constructRegions)),
                 mutations: JSON.parse(JSON.stringify(mutations)),
+                assembled,
+                translons: JSON.parse(JSON.stringify(translons)),
                 products
             });
 
@@ -856,6 +2344,7 @@
 
             // Regenerate gel with all constructs
             generateWesternBlot();
+            refreshEditConstructSelect();
         });
 
         function drawSingleGel(products) {
@@ -871,9 +2360,26 @@
             const canvas = canvasContainer.querySelector('canvas');
             const ctx = canvas.getContext('2d');
 
-            drawGelLane(ctx, canvas, products, 150, 'Current');
+            // Prepare hitboxes for band clicks
+            bandHitBoxes = [];
+            drawGelLane(ctx, canvas, products, 150, 'Current', { laneIndex: (savedConstructs.length), recordHits: true });
+
+            // Click to highlight bands
+            canvas.onclick = (ev) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = ev.clientX - rect.left;
+                const y = ev.clientY - rect.top;
+                const hit = bandHitBoxes.find(b => x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2);
+                if (hit) {
+                    const lane = { name: 'Current', experiment: experimentName, assembled, translons };
+                    highlightBandForLane(lane, hit);
+                }
+            };
         }
 
+        var lastRenderedLanes = [];
+        var laneHitBoxes = [];
+        var bandHitBoxes = [];
         function drawMultiConstructGel(constructs) {
             const container = document.getElementById('western-comparison');
             container.innerHTML = '';
@@ -899,10 +2405,76 @@
             drawMWMarkers(ctx, 20, canvas.height);
 
             // Draw each construct as a lane
+            laneHitBoxes = [];
             constructs.forEach((construct, index) => {
                 const laneX = 100 + (index * 100);
-                drawGelLane(ctx, canvas, construct.products, laneX, construct.name);
+                drawGelLane(ctx, canvas, construct.products, laneX, construct.name, { laneIndex: index, recordHits: true });
+                laneHitBoxes.push({ index, x1: laneX - 40, x2: laneX + 40, y1: 50, y2: canvas.height - 80 });
             });
+
+            // Save lanes for RDG selection
+            lastRenderedLanes = constructs;
+
+            // Labels: angle to avoid overlap and draw on top with background
+            ctx.save();
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 11px sans-serif';
+            constructs.forEach((construct, index) => {
+                const laneX = 100 + (index * 100);
+                const top = (construct.experiment || 'Experiment');
+                // Prefer showing only the variant on the second line
+                let variant = construct.name || '';
+                if (variant.includes('–')) {
+                    variant = variant.split('–').slice(-1)[0].trim();
+                } else if (variant.includes('-')) {
+                    variant = variant.split('-').slice(-1)[0].trim();
+                }
+                const topTrim = top.length > 18 ? top.slice(0,17) + '…' : top;
+                const bottomTrim = variant.length > 18 ? variant.slice(0,17) + '…' : variant;
+                const tx = laneX - 26;
+                const ty = canvas.height - 12;
+                ctx.translate(tx, ty);
+                ctx.rotate(-Math.PI/4);
+                // Measure widest line for background
+                const w = Math.max(ctx.measureText(topTrim).width, ctx.measureText(bottomTrim).width) + 10;
+                const h = 28; // two lines
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(-4, -h + 4, w, h);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillText(topTrim, 0, -6);
+                ctx.fillText(bottomTrim, 0, 8);
+                ctx.rotate(Math.PI/4);
+                ctx.translate(-tx, -ty);
+            });
+            ctx.restore();
+
+            // Click to view RDG for a lane
+            canvas.onclick = (ev) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = ev.clientX - rect.left;
+                const y = ev.clientY - rect.top;
+                // Prefer band hit over lane background hit
+                const bandHit = bandHitBoxes.find(b => x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2);
+                if (bandHit) {
+                    const lane = lastRenderedLanes[bandHit.laneIndex];
+                    highlightBandForLane(lane, bandHit);
+                    // Also select lane in dropdown
+                    const sel = document.getElementById('rdg-construct-select');
+                    if (sel) sel.value = String(bandHit.laneIndex);
+                    return;
+                }
+                const laneHit = laneHitBoxes.find(b => x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2);
+                if (laneHit) {
+                    const lane = lastRenderedLanes[laneHit.index];
+                    // If lane includes assembled data, render its RDG
+                    if (lane && lane.assembled && lane.assembled.sequence) {
+                        viewRDGForConstruct(lane);
+                        // also select in dropdown if available
+                        const sel = document.getElementById('rdg-construct-select');
+                        if (sel) sel.value = String(laneHit.index);
+                    }
+                }
+            };
         }
 
         function drawMWMarkers(ctx, x, canvasHeight) {
@@ -916,13 +2488,62 @@
             ctx.textAlign = 'right';
 
             mwMarkers.forEach(mw => {
-                const fraction = (Math.log(mw) - Math.log(minMW)) / (Math.log(maxMW) - Math.log(minMW));
+                let fraction = (Math.log(mw) - Math.log(minMW)) / (Math.log(maxMW) - Math.log(minMW));
+                fraction = Math.max(0, Math.min(1, fraction));
                 const y = 50 + gelHeight * (1 - fraction);
                 ctx.fillText(`${mw}`, x - 5, y + 3);
             });
         }
 
-        function drawGelLane(ctx, canvas, products, laneX, label) {
+        // Highlight producing translons and reporter blocks for a clicked band
+        function highlightBandForLane(lane, bandHit) {
+            try {
+                if (!lane || !lane.assembled || !lane.assembled.sequence) return;
+                const reportersSet = new Set((bandHit.reportersKey||'').split('+').filter(Boolean));
+                const reporters = Array.from(reportersSet);
+                // Build construct map
+                const constructMap = {};
+                (lane.assembled.regions||[]).forEach(region => { constructMap[region.type] = { start: region.start, end: region.end }; });
+                // Predict products per translon to build a mapping
+                const tl = Array.isArray(lane.translons) && lane.translons.length ? lane.translons : translons;
+                const prods = RDGEngine.predictProteinProducts(tl, constructMap);
+                // Match on reporters signature and MW bucket (0.5 kDa)
+                const matches = [];
+                prods.forEach((p, idx) => {
+                    const repsKey = (p.reporters||[]).slice().sort().join('+');
+                    const bucket = (Math.round(p.mw * 2) / 2).toFixed(1);
+                    if (repsKey === bandHit.reportersKey && bucket === bandHit.mwBucket) {
+                        // Find the translon source by matching start/end to tl array
+                        const t = tl.find(tt => tt.startNt === p.startPos && tt.endNt === p.endPos);
+                        if (t) matches.push(t);
+                    }
+                });
+                // Fallback: if no matches, broaden to nearest MW bucket within 0.5 kDa
+                if (matches.length === 0) {
+                    prods.forEach((p) => {
+                        const repsKey = (p.reporters||[]).slice().sort().join('+');
+                        const diff = Math.abs(parseFloat((Math.round(p.mw * 2) / 2).toFixed(1)) - parseFloat(bandHit.mwBucket));
+                        if (repsKey === bandHit.reportersKey && diff <= 0.5) {
+                            const t = tl.find(tt => tt.startNt === p.startPos && tt.endNt === p.endPos);
+                            if (t) matches.push(t);
+                        }
+                    });
+                }
+
+                // Set highlight globals
+                const hi = new Set();
+                matches.forEach(t => hi.add(`${t.startNt}|${t.endNt}|${t.frame}`));
+                window.RDG_HIGHLIGHT_KEYS = hi;
+                window.RDG_HIGHLIGHT_REPORTERS = new Set(reporters);
+
+                // Render RDG for this lane (switch view if different)
+                viewRDGForConstruct(lane);
+            } catch (e) {
+                console.warn('Highlight band failed', e);
+            }
+        }
+
+        function drawGelLane(ctx, canvas, products, laneX, label, opts) {
             const laneWidth = 80;
             const gelHeight = canvas.height - 100;
             const maxMW = 200;
@@ -932,43 +2553,76 @@
             ctx.fillStyle = '#2d2d2d';
             ctx.fillRect(laneX - laneWidth/2, 50, laneWidth, gelHeight);
 
-            // Calculate total abundance for normalization
-            const totalAbundance = products.reduce((sum, p) => sum + p.abundance, 0);
+            // Compute abundance normalization using per-lane max (quantification maps to intensity)
+            const abundances = products.map(p => (typeof p.abundance === 'number' ? p.abundance : 0));
+            const maxAbundance = Math.max(0.0001, ...abundances);
+            const gamma = 0.8; // gamma < 1 boosts perceived separation
 
             // Draw bands with QUANTITATIVE sizing (F3)
-            products.forEach(product => {
+            products.forEach((product, pIdx) => {
                 const mw = product.mw;
                 const fraction = (Math.log(mw) - Math.log(minMW)) / (Math.log(maxMW) - Math.log(minMW));
                 const y = 50 + gelHeight * (1 - fraction);
 
-                // QUANTITATIVE FEATURE 1: Band width proportional to abundance
-                const relativeAbundance = totalAbundance > 0 ? product.abundance / totalAbundance : 0;
-                const bandWidth = (laneWidth - 10) * Math.max(0.3, relativeAbundance * 1.5); // Min 30% width, scale up
+                // QUANTITATIVE FEATURE 1: Constant band width per lane (real gels have consistent lane widths)
+                const norm = Math.pow(Math.max(0, product.abundance) / maxAbundance, gamma);
+                const bandWidth = (laneWidth - 10) * 0.8; // fixed at 80% of lane
 
-                // QUANTITATIVE FEATURE 2: Intensity also reflects abundance
-                const intensity = Math.min(255, product.abundance * 400);
-                ctx.fillStyle = `rgba(255, 255, 255, ${intensity / 255})`;
+                // QUANTITATIVE FEATURE 2: Intensity reflects abundance via globalAlpha (constant width)
+                // Clamp to mimic detector saturation near the top end
+                const alpha = Math.min(1.0, 0.08 + 0.92 * norm); // 0.08..1.0
+                ctx.globalAlpha = alpha;
+
+                // Soft-edged band: use vertical gradient (brighter center, feathered edges)
+                const grad = ctx.createLinearGradient(0, y - 8, 0, y + 8);
+                grad.addColorStop(0, 'rgba(255,255,255,0.15)');
+                grad.addColorStop(0.5, 'rgba(255,255,255,1.0)');
+                grad.addColorStop(1, 'rgba(255,255,255,0.15)');
+                ctx.fillStyle = grad;
 
                 // QUANTITATIVE FEATURE 3: Band height also scales slightly with abundance
-                const baseBandHeight = 8;
-                const bandHeight = baseBandHeight + (relativeAbundance * 6); // Up to 14px for dominant bands
+                const baseBandHeight = 10; // fixed band thickness
+                const bandHeight = baseBandHeight;
 
                 // Draw band (centered within lane)
                 const bandX = laneX - bandWidth/2;
                 ctx.fillRect(bandX, y - bandHeight/2, bandWidth, bandHeight);
 
-                // Add glow effect proportional to abundance
-                ctx.shadowBlur = 5 + (relativeAbundance * 15); // More abundant = more glow
+                // Add subtle bloom proportional to abundance (simulates chemiluminescent halo)
+                ctx.shadowBlur = 2 + (norm * 10);
                 ctx.shadowColor = 'white';
                 ctx.fillRect(bandX, y - bandHeight/2, bandWidth, bandHeight);
                 ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+
+                // Overload smear at high intensities: draw a faint, slightly taller wash
+                if (alpha > 0.95) {
+                    ctx.globalAlpha = 0.1;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(bandX, y - (bandHeight/2 + 6), bandWidth, bandHeight + 12);
+                    ctx.globalAlpha = 1;
+                }
+
+                // Record hitbox for band clicks
+                if (opts && opts.recordHits) {
+                    const reps = (product.reporters||[]).slice().sort().join('+');
+                    const mwBucket = (Math.round(product.mw * 2) / 2).toFixed(1);
+                    bandHitBoxes.push({
+                        laneIndex: (opts.laneIndex||0),
+                        productIndex: pIdx,
+                        reportersKey: reps,
+                        mwBucket,
+                        x1: bandX,
+                        x2: bandX + bandWidth,
+                        y1: y - bandHeight/2,
+                        y2: y + bandHeight/2
+                    });
+                }
             });
 
-            // Label
-            ctx.fillStyle = '#999';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(label, laneX, canvas.height - 20);
+            // Lane tick (no long labels here; labels drawn globally in multi-lane)
+            ctx.fillStyle = '#777';
+            ctx.fillRect(laneX - 10, canvas.height - 35, 20, 2);
         }
 
         function updateBandTable() {
@@ -977,14 +2631,19 @@
 
             // Get current products
             const constructMap = {};
-            constructRegions.forEach(region => {
-                constructMap[region.type] = { start: region.start - 1, end: region.end };
+            const vizRegions = (assembled && assembled.regions) || [];
+            vizRegions.forEach(region => {
+                constructMap[region.type] = { start: region.start, end: region.end };
             });
-            const currentProducts = RDGEngine.predictProteinProducts(translons, constructMap);
+            let currentProducts = RDGEngine.predictProteinProducts(translons, constructMap);
+            const antibody = document.getElementById('antibody-select').value;
+            currentProducts = aggregateProducts(currentProducts, antibody);
 
-            // Add all saved constructs
-            [...savedConstructs, { name: 'Current', products: currentProducts }].forEach(construct => {
-                construct.products.forEach(product => {
+            // Add all saved constructs (re-aggregated by current antibody)
+            const all = [...savedConstructs, { name: 'Current', products: currentProducts, assembled }];
+            all.forEach(construct => {
+                const prods = aggregateProducts(construct.products, antibody);
+                prods.forEach(product => {
                     const row = document.createElement('tr');
 
                     const reporterTags = product.reporters.map(r =>
