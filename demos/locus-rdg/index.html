@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locus RDG: Splicing + Ribosome Decision Graph</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin:0; }
+    .container { max-width: 1600px; margin: 0 auto; padding: 1.25rem; }
+    h1 { font-size: 1.8rem; margin: 0.5rem 0 0.25rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 1rem; }
+    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 1.25rem; }
+    @media(max-width: 1100px){ .grid { grid-template-columns: 1fr; } }
+    .panel { background: #0b1220; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
+    .stack { display: grid; grid-auto-rows: min-content; gap: 12px; }
+    .pane { background:#0b1220; border:1px solid #1e293b; border-radius:8px; padding:8px; }
+    .pane-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; font-size:0.85rem; color:#94a3b8; }
+    .pane-toolbar .state { display:flex; gap:6px; }
+    .pane-toolbar button { padding:0.25rem 0.5rem; border-radius:6px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; cursor:pointer; }
+    .pane--expanded{ height:520px; }
+    .pane--dense{ height:300px; }
+    .pane--collapsed{ height:44px; overflow:hidden; }
+    .pane-seq.pane--expanded{ height:220px; }
+    .pane-seq.pane--dense{ height:160px; }
+    .pane-rdg.pane--expanded{ height:420px; }
+    .pane-rdg.pane--dense{ height:280px; }
+    .pane-body { height: calc(100% - 32px); overflow: hidden; }
+    #sequencePane { height: 100%; overflow:auto; border:1px solid #334155; border-radius:6px; padding:6px; }
+    label { color: #cbd5e1; font-weight: 600; display:block; margin-bottom: 0.25rem; }
+    input, select { width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; }
+    button { padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; cursor: pointer; font-weight: 600; }
+    button.primary { background: #4338ca; border-color: #4338ca; }
+    .row { display:flex; gap:0.5rem; align-items:center; }
+    .row > * { flex: 1; }
+    .small { color:#94a3b8; font-size: 0.85rem; }
+    canvas { width: 100%; background: #0b1220; border-radius: 8px; border: 1px solid #334155; }
+    .legend { display:flex; gap:0.75rem; flex-wrap: wrap; align-items:center; font-size:0.85rem; color:#cbd5e1; }
+    .badge { padding: 0.1rem 0.45rem; border-radius: 6px; font-weight:700; }
+    .b-exon{ background:#0ea5e9; color:#00111a; }
+    .b-junc{ background:#22c55e; color:#001a0d; }
+    .b-start{ background:#10b981; color:#01210f; }
+    .b-stop{ background:#ef4444; color:#2a0000; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
+    @media(max-width: 1100px){ .cols { grid-template-columns: 1fr; } }
+    .list { max-height: 260px; overflow:auto; border:1px solid #1e293b; border-radius:8px; }
+    .list-item { padding:0.5rem 0.75rem; border-bottom: 1px solid #1e293b; display:flex; align-items:center; justify-content:space-between; }
+    .list-item:hover { background:#0f172a; }
+    .muted { color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" style="color:#94a3b8;text-decoration:none">← Back to Demos</a>
+    <h1>Locus RDG</h1>
+    <div class="subtitle">Splicing + translation event model for a whole gene locus</div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label for="identifier">Gene symbol or Ensembl ID</label>
+            <input id="identifier" placeholder="e.g., ATF4 or ENSG... or ENST..."/>
+            <div class="small">Looks up gene → transcripts/exons, builds splice graph, derives event model.</div>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem" class="row">
+          <button id="loadBtn" class="primary">Load Locus</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+        <div style="margin-top:0.75rem" id="status" class="small">Ready.</div>
+        <div style="margin-top:1rem" class="legend">
+          <span class="badge b-exon">Exon</span>
+          <span class="badge b-junc">Splice Junction</span>
+          <span class="badge b-start">Start</span>
+          <span class="badge b-stop">Stop</span>
+        </div>
+        <div style="margin-top:1rem">
+          <h3 style="margin:0 0 .5rem 0">Chains</h3>
+          <div id="chainList" class="list"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="row" style="justify-content:space-between; margin-bottom:.5rem">
+          <div class="small">Select a chain to render as a transcript RDG</div>
+          <div class="row" style="gap:.25rem; flex:0 0 auto">
+            <!-- PNG export lives only in the RDG pane -->
+          </div>
+        </div>
+        <div class="stack">
+          <div class="pane pane-splice pane--expanded" id="paneSplice">
+            <div class="pane-toolbar">
+              <div>
+                <strong>Splicing</strong>
+                <span style="margin-left:8px">X‑Axis</span>
+                <select id="xModeSel"><option value="collapsed">Collapsed</option><option value="genomic">Genomic</option></select>
+                <span style="margin-left:8px">Gap</span>
+                <input id="intronGap" type="range" min="0" max="30" value="12" style="vertical-align:middle; width:120px"/>
+                <span style="margin-left:8px">Layout</span>
+                <select id="layoutSel">
+                  <option value="graph">Splice Graph</option>
+                  <option value="shared">Shared Blocks on Transcript Lanes</option>
+                  <option value="core">Super Transcript (Union)</option>
+                  <option value="perTranscript">Per Transcript (Duplicated)</option>
+                </select>
+              </div>
+              <div class="state">
+                <button data-pane-state="expanded">Expanded</button>
+                <button data-pane-state="dense">Dense</button>
+                <button data-pane-state="collapsed">Collapsed</button>
+              </div>
+            </div>
+            <div class="pane-body"><div id="splicePane" style="height:100%"></div></div>
+          </div>
+
+          <div class="pane pane-seq pane--dense" id="paneSeq">
+            <div class="pane-toolbar">
+              <div><strong>Sequence</strong></div>
+              <div class="state">
+                <button data-pane-state="expanded">Expanded</button>
+                <button data-pane-state="dense">Dense</button>
+                <button data-pane-state="collapsed">Collapsed</button>
+              </div>
+            </div>
+            <div class="pane-body"><div id="sequencePane"></div></div>
+          </div>
+
+          <div class="pane pane-rdg pane--dense" id="paneRDG">
+            <div class="pane-toolbar">
+              <div><strong>RDG</strong></div>
+              <div class="state">
+                <button data-pane-state="expanded">Expanded</button>
+                <button data-pane-state="dense">Dense</button>
+                <button data-pane-state="collapsed">Collapsed</button>
+                <button id="rdgExportBtn">PNG</button>
+              </div>
+            </div>
+            <div class="pane-body"><canvas id="rdgCanvas" style="width:100%; height:100%"></canvas></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:.75rem">
+          <textarea id="sequenceBox" style="width:100%; height:120px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; padding:.5rem" placeholder="Derived transcript sequence (RNA)"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D3 for splicing SVG view -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="../shared/rdg-engine.js"></script>
+  <script src="../shared/rdg-viz.js"></script>
+  <script src="../shared/locus-ensembl.js"></script>
+  <script src="../shared/splice-core.js"></script>
+  <script src="../shared/splice-view-svg.js"></script>
+  <script src="../shared/sequence-pane.js"></script>
+  <script src="../shared/panels.js"></script>
+  
+  <script>
+  const statusEl = document.getElementById('status');
+  const chainListEl = document.getElementById('chainList');
+  const splicePane = document.getElementById('splicePane');
+  const rdgCanvas = document.getElementById('rdgCanvas');
+  const ctx = rdgCanvas.getContext('2d');
+  const seqPaneEl = document.getElementById('sequencePane');
+  const FRAME_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
+
+  // Unified store for congruent state
+  const store = {
+    gene: null,
+    locus: null,
+    model: null,
+    selected: { kind: null, id: null, blocks: [] },
+    sequenceRNA: '',
+    translons: [],
+    starts: []
+  };
+
+  function setStatus(msg, ok=false) {
+    statusEl.textContent = msg;
+    statusEl.style.color = ok ? '#22c55e' : '#94a3b8';
+  }
+
+  function clearLists(){ chainListEl.innerHTML=''; }
+
+  let spliceView = null;
+  let lastSequence = '';
+  let lastStartCodons = [];
+  let lastTranslons = [];
+  let rdgScale = 1; // device-pixel scale factor for crisp canvas
+  function initSpliceView(model){
+    splicePane.innerHTML = '';
+    spliceView = SpliceView.init(splicePane, model, { height: splicePane.clientHeight || 260 });
+    const xModeSel = document.getElementById('xModeSel');
+    const intronGap = document.getElementById('intronGap');
+    const layoutSel = document.getElementById('layoutSel');
+    xModeSel.onchange = ()=> spliceView.setMode({ xMode: xModeSel.value });
+    intronGap.oninput = ()=> spliceView.setMode({ intronGapPx: parseInt(intronGap.value,10) });
+    layoutSel.onchange = ()=> spliceView.setLayoutMode(layoutSel.value);
+    // Default to Splice Graph view and sync dropdown
+    spliceView.setLayoutMode('graph');
+    try { document.getElementById('layoutSel').value = 'graph'; } catch {}
+    const ctlSplice = Panels.wirePanel(document.getElementById('paneSplice'), { default:'expanded' });
+    ctlSplice.onChange(()=> spliceView && spliceView.setViewState(ctlSplice.getState()));
+    // Wire sequence and RDG pane state toggles
+    const ctlSeq = Panels.wirePanel(document.getElementById('paneSeq'), { default:'dense' });
+    const ctlRDG = Panels.wirePanel(document.getElementById('paneRDG'), { default:'dense' });
+    ctlRDG.onChange(()=> redrawRDG());
+
+    // Hook interactions: clicking a segment begins/extends a path, then emit to parent via custom event
+    let currentPath = [];
+    spliceView.on('block-click', ({ blockId, exonId }) => {
+      if (!blockId) return;
+      const hadExonId = !!exonId;
+      // Resolve exonId when clicking per-transcript lanes
+      if (!exonId && store?.model?.blockIndex) {
+        try {
+          const b = store.model.blockIndex.get(blockId);
+          const eids = (b && b.covers && b.covers.exonIds) || [];
+          if (eids && eids.length) exonId = eids[0];
+        } catch {}
+      }
+      // We will highlight chain only when not focusing a single exon
+      // simple: if empty, start; else append if edge exists
+      const last = currentPath[currentPath.length-1];
+      if (!last) { currentPath = [blockId]; }
+      else {
+        const k = `${last}->${blockId}`;
+        const ok = (store.model.edges || []).some(e => e.from===last && e.to===blockId);
+        if (ok) currentPath.push(blockId); else currentPath = [blockId];
+      }
+      // Convert block path to exon path when possible to drive exon-level highlights
+      let chainHighlight = { nodes: currentPath.slice() };
+      try {
+        if (SpliceCore.blocksToExons && store.model && currentPath.length){
+          const exPath = SpliceCore.blocksToExons(store.model, currentPath);
+          if (exPath && exPath.length){ chainHighlight = { nodes: exPath }; }
+        }
+      } catch {}
+      if (!exonId) spliceView.highlightChain(chainHighlight);
+      // Focus exon across views last so it isn't overridden by chain highlight
+      if (exonId){
+        try {
+          spliceView.highlightExon(exonId);
+          // Short-list chains panel: transcripts containing this exon
+          const ex = store.model?.exonIndex?.get(exonId);
+          const txs = (ex && ex.transcriptIds) ? new Set(ex.transcriptIds) : new Set();
+          if (txs.size){
+            const all = buildUnifiedChains();
+            const filtered = all.filter(it => it.kind==='transcript' && txs.has(it.txId));
+            renderChainList(filtered);
+          }
+        } catch {}
+      }
+      // assemble live and render sequence + RDG
+      const dna = SpliceCore.assembleChainDNA(store.model, store.locus, { blocks: currentPath });
+      const rna = SpliceCore.toRNA(dna);
+      const feats = RDGEngine.identifyFeatures(rna);
+      const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
+      const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+      SequencePane.render(seqPaneEl, rna, { wrap: 60 });
+      drawRDG(translons, rna, starts);
+    });
+
+    // Click-away background from splice view clears exon focus and restores full transcript list
+    spliceView.on('bg-click', () => {
+      try {
+        spliceView.highlightExon(null);
+        renderChainList(buildUnifiedChains());
+      } catch {}
+    });
+  }
+
+  function sizeRdgCanvas(){
+    const rect = rdgCanvas.getBoundingClientRect();
+    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    const w = Math.max(200, Math.floor(rect.width));
+    const h = Math.max(120, Math.floor(rect.height));
+    // set high-DPI backing store to avoid blur
+    rdgCanvas.width = w * dpr;
+    rdgCanvas.height = h * dpr;
+    rdgCanvas.style.width = w + 'px';
+    rdgCanvas.style.height = h + 'px';
+    rdgScale = dpr;
+  }
+
+  function wireRdgInteractions(){
+    if (rdgCanvas.__wired) return; rdgCanvas.__wired = true;
+    rdgCanvas.addEventListener('mousemove', (ev)=>{
+      const rect = rdgCanvas.getBoundingClientRect();
+      const x = (ev.clientX - rect.left) * rdgScale;
+      const y = (ev.clientY - rect.top) * rdgScale;
+      const starts = window.RDG_LAST_STARTS || [];
+      const yRails = window.RDG_FRAME_Y || [90,120,150];
+      const ntToPx = window.RDG_NT_TO_PIXEL || ((nt)=>nt);
+      let hit = null; let best=1e9;
+      for (const s of starts){
+        const sx = ntToPx(s.pos); const sy = yRails[s.frame] || 0;
+        const d = Math.abs(sx - x) + Math.abs(sy - y);
+        if (Math.abs(sy - y) < 18 && Math.abs(sx - x) < best){ best = Math.abs(sx - x); hit = s; }
+      }
+      if (hit && best < 10*rdgScale) {
+        rdgCanvas.style.cursor = 'pointer';
+        rdgCanvas.title = `${hit.codon} start at ${hit.pos} (frame ${hit.frame})`;
+      } else {
+        rdgCanvas.style.cursor = 'default'; rdgCanvas.title = '';
+      }
+    });
+
+    rdgCanvas.addEventListener('click', (ev)=>{
+      const rect = rdgCanvas.getBoundingClientRect();
+      const x = (ev.clientX - rect.left) * rdgScale;
+      const y = (ev.clientY - rect.top) * rdgScale;
+      const starts = window.RDG_LAST_STARTS || [];
+      const yRails = window.RDG_FRAME_Y || [90,120,150];
+      const ntToPx = window.RDG_NT_TO_PIXEL || ((nt)=>nt);
+      let hit = null; let best=1e9;
+      for (const s of starts){
+        const sx = ntToPx(s.pos); const sy = yRails[s.frame] || 0;
+        const d = Math.abs(sx - x) + Math.abs(sy - y);
+        if (Math.abs(sy - y) < 18 && Math.abs(sx - x) < best){ best = Math.abs(sx - x); hit = s; }
+      }
+      if (!hit || best >= 10*rdgScale) return;
+      // Try to highlight an existing translon starting at this pos; if none, rebuild including this start
+      let t = (lastTranslons||[]).find(t => t.startNt === hit.pos && t.frame === hit.frame);
+      if (!t) {
+        // rebuild to include this start
+        const feats = RDGEngine.identifyFeatures(lastSequence);
+        const startsAnn = feats.predicted.startCodons || RDGEngine.findStartCodons(lastSequence);
+        const trans = RDGEngine.buildTranslons(lastSequence, { features: feats, startCodons: startsAnn, limit: 12, ensureStarts: [hit.pos] });
+        lastStartCodons = startsAnn; lastTranslons = trans;
+        redrawRDG();
+        t = (trans||[]).find(tt => tt.startNt === hit.pos && tt.frame === hit.frame);
+      }
+      if (t){
+        const key = `${t.startNt}|${t.endNt}|${t.frame}`;
+        window.RDG_HIGHLIGHT_KEYS = new Set([key]);
+        redrawRDG();
+      }
+    });
+  }
+  function drawSpliceGraph(highlightChain=null) {
+    if (!spliceView) return;
+    spliceView.highlightChain(highlightChain);
+  }
+
+  // Unified chains list (transcripts + enumerated)
+  let unifiedChains = [];
+  let unifiedMap = new Map();
+  function buildUnifiedChains() {
+    unifiedChains = [];
+    unifiedMap = new Map();
+    if (!store.model) return [];
+    const sigSet = new Set();
+    // Transcripts first
+    (store.model.transcripts||[]).forEach(t => {
+      const nodes = (t.blocks||[]).slice();
+      const sig = nodes.join('>');
+      const id = `TR:${t.id}`;
+      const item = { id, label: t.name||t.id, kind: 'transcript', nodes, txId: t.id };
+      unifiedChains.push(item); unifiedMap.set(id, item); sigSet.add(sig);
+    });
+    // Remove explicit enumerated listings for exons/junctions; keep UI focused on transcripts only
+    return unifiedChains;
+  }
+
+  function renderChainList(chains) {
+    chainListEl.innerHTML = '';
+    if (!chains || chains.length === 0) {
+      chainListEl.innerHTML = '<div class="list-item"><span class="muted">No event chains enumerated</span></div>';
+      return;
+    }
+    chains.slice(0, 100).forEach(ch => {
+      const el = document.createElement('div'); el.className = 'list-item';
+      const lbl = ch.nodes ? ch.nodes.map(nid => {
+        const b = store.model?.blockIndex?.get(nid);
+        return b ? `${b.start}-${b.end}` : '?';
+      }).join(' ⟶ ') : '';
+      const badge = '<span class="badge b-exon" style="margin-right:6px">Transcript</span>';
+      el.innerHTML = `<div>
+        <div>${badge}<strong>${ch.label||ch.id}</strong></div>
+        <div class="muted">${lbl}</div>
+      </div>
+      <div><button class="chooseEv" data-id="${ch.id}">Select</button></div>`;
+      chainListEl.appendChild(el);
+    });
+    chainListEl.querySelectorAll('button.chooseEv').forEach(btn => {
+      btn.addEventListener('click', () => selectEventChain(btn.getAttribute('data-id')));
+    });
+  }
+
+  function selectTranscriptChain(txId) {
+    const tr = (store.model?.transcripts||[]).find(t=>t.id===txId);
+    if (!tr) return;
+    const dna = SpliceCore.assembleChainDNA(store.model, store.locus, { blocks: tr.blocks });
+    const rna = SpliceCore.toRNA(dna);
+
+    // Derive RDG translons from this transcript sequence
+    const feats = RDGEngine.identifyFeatures(rna);
+    const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
+    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+
+    // Sequence pane + RDG
+    SequencePane.render(seqPaneEl, rna, { wrap: 60 });
+    const exPath = (SpliceCore.blocksToExons && store.model) ? (SpliceCore.blocksToExons(store.model, tr.blocks)||[]) : [];
+    if (spliceView && exPath.length) spliceView.highlightChain({ nodeType: 'exon', nodes: exPath });
+    drawRDG(translons, rna, starts);
+    // Dev invariants
+    try {
+      const len = tr.blocks.reduce((s,bid)=>{ const b=store.model.blockIndex.get(bid); return s + (b? (b.end - b.start) : 0); },0);
+      if (rna.length !== len) console.warn('Invariant mismatch: RNA length != sum(block lengths)', { rna: rna.length, sum: len });
+      const edgesOk = (SpliceCore.edgesFromBlocks(store.model, tr.blocks)||[]).length === Math.max(0, tr.blocks.length-1);
+      if (!edgesOk) console.warn('Non-adjacent blocks in transcript selection');
+    } catch {}
+  }
+
+  function selectEventChain(chainId) {
+    // Prefer unified map (transcripts or enumerated)
+    const entry = unifiedMap.get(chainId) || null;
+    let ch = entry ? { id: entry.id, blocks: entry.nodes } : null;
+    if (!ch) {
+      const chains = SpliceCore.enumerateChains(store.model, { maxChains: 200, maxSteps: 12 });
+      ch = chains.find(c=>c.id===chainId) || null;
+    }
+    if (!ch) return;
+    const dna = SpliceCore.assembleChainDNA(store.model, store.locus, ch);
+    const rna = SpliceCore.toRNA(dna);
+    const feats = RDGEngine.identifyFeatures(rna);
+    const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
+    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+    SequencePane.render(seqPaneEl, rna, { wrap: 60 });
+    const exPath = (SpliceCore.blocksToExons && store.model) ? (SpliceCore.blocksToExons(store.model, ch.blocks)||[]) : [];
+    if (spliceView && exPath.length) spliceView.highlightChain({ nodeType: 'exon', nodes: exPath });
+    drawRDG(translons, rna, starts);
+    // Dev invariants
+    try {
+      const len = ch.blocks.reduce((s,bid)=>{ const b=store.model.blockIndex.get(bid); return s + (b? (b.end - b.start) : 0); },0);
+      if (rna.length !== len) console.warn('Invariant mismatch: RNA length != sum(block lengths)', { rna: rna.length, sum: len });
+      const edgesOk = (SpliceCore.edgesFromBlocks(store.model, ch.blocks)||[]).length === Math.max(0, ch.blocks.length-1);
+      if (!edgesOk) console.warn('Non-adjacent blocks in chain selection');
+    } catch {}
+  }
+
+  function drawRDG(translons, rna, starts) {
+    sizeRdgCanvas();
+    ctx.clearRect(0,0,rdgCanvas.width,rdgCanvas.height);
+    window.__RDG_PRIMARY_CANVAS = rdgCanvas;
+    RDGVizConfig = { mode: 'frames', showOrfBarsOnFrames: true };
+    // Remember for interactivity
+    lastSequence = rna; lastStartCodons = starts; lastTranslons = translons;
+    drawTreeLayout(ctx, rdgCanvas, translons, rna, starts, FRAME_COLORS, null, [], []);
+    wireRdgInteractions();
+  }
+
+  function redrawRDG(){ if (lastSequence && lastStartCodons && lastTranslons) { drawRDG(lastTranslons, lastSequence, lastStartCodons); } }
+
+  async function loadLocus() {
+    const id = document.getElementById('identifier').value.trim();
+    if (!id) { setStatus('Enter a gene symbol or Ensembl ID'); return; }
+    setStatus('Fetching gene and transcripts...');
+    try {
+      store.gene = await LocusEnsembl.fetchGeneExpanded(id);
+      setStatus(`Gene ${store.gene.display_name || store.gene.id}: ${store.gene.Transcript.length} transcripts`);
+      store.locus = await LocusEnsembl.fetchLocusSequence(store.gene);
+      // Build exon-block core model
+      const model = SpliceCore.buildCoreModel(store.gene, store.locus, { spliceRules: { allowSkipEdges:false } });
+      store.model = model;
+      // expose DNA for plausible checks during enumeration (internal use)
+      window.__LOCUS_DNA__ = store.locus.dna || '';
+      initSpliceView(model);
+      const chains = buildUnifiedChains();
+      clearLists(); renderChainList(chains);
+    } catch (e) {
+      console.error(e);
+      setStatus(e.message || 'Failed to fetch locus');
+      // Light guidance for transient REST issues
+      if (/503|Service Unavailable|NetworkError/i.test(String(e))) {
+        setStatus('Ensembl REST unavailable (503). Please retry in a moment.');
+      }
+    }
+  }
+
+  document.getElementById('loadBtn').addEventListener('click', loadLocus);
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ store.gene=null;store.locus=null;store.model=null;store.selected={kind:null,id:null,blocks:[]};clearLists();splicePane.innerHTML='';ctx.clearRect(0,0,rdgCanvas.width,rdgCanvas.height);seqPaneEl.innerHTML=''; setStatus('Ready.'); });
+  // Wire only the RDG PNG export button (dedup id)
+  const rdgExportBtn = document.getElementById('rdgExportBtn');
+  rdgExportBtn?.addEventListener('click', ()=>{
+    const link = document.createElement('a');
+    link.download = 'locus_rdg.png';
+    link.href = rdgCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // Auto-load ATF4 on first open
+  window.addEventListener('load', ()=>{
+    const idInput = document.getElementById('identifier');
+    if (idInput && !idInput.value) idInput.value = 'ATF4';
+    loadLocus();
+  });
+
+  </script>
+</body>
+</html>

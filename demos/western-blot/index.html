@@ -290,6 +290,19 @@
             color: #1e40af;
         }
     </style>
+  <style id="pro-theme-overrides">
+    :root{ --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#2563eb; --accent2:#1e40af; --border:#e2e8f0; }
+    body{ background: linear-gradient(180deg, var(--bg) 0%, #ffffff 100%) !important; color: var(--text); }
+    .primary-btn{ background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%) !important; color:#fff !important; }
+    .secondary-btn{ background:#f8fafc !important; color:#334155 !important; border:2px solid var(--border) !important; }
+    .section{ background: #ffffff !important; }
+
+    body[data-theme='light']{ --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#2563eb; --accent2:#1e40af; --border:#e2e8f0; }
+    body[data-theme='dark']{ --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --accent:#60a5fa; --accent2:#3b82f6; --border:#334155; }
+    body[data-theme='dark']{ background: linear-gradient(180deg, var(--bg) 0%, #111827 100%) !important; }
+    body[data-theme='dark'] .secondary-btn{ background:#0f172a !important; color:#e5e7eb !important; border:2px solid var(--border) !important; }
+    body[data-theme='dark'] .section{ background: #0f172a !important; }
+  </style>
 </head>
 <body>
     <div class="container">
@@ -617,8 +630,10 @@
         let baselineIndex = null; // index into savedConstructs + current (last)
         let compareSortKey = 'name';
         let compareSortDir = 'asc';
-        // RDG Viz config (default accessibility)
+        // Restore default viz config and set a small baseline shift to avoid rail overlap
         window.RDGVizConfig = { mode: 'accessibility' };
+        window.RDG_LAYOUT_Y0 = (typeof window.RDG_LAYOUT_Y0 === 'number') ? window.RDG_LAYOUT_Y0 : 220;
+        window.RDG_LAYOUT_Y0 = 220; // default 200 → 220 px
         let assembled = null; // { sequence, regions } for current construct
 
         // ====================================================================
@@ -2856,7 +2871,7 @@
         <h3>Limitations & Considerations</h3>
         <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1rem; color: #555;">
             <li><strong>Simplified Model:</strong> Real translation involves many factors not captured here (scanning dynamics, ribosome availability, mRNA structure, etc.)</li>
-            <li><strong>No Stop Readthrough:</strong> Currently assumes all stop codons terminate translation (readthrough suppression not modeled)</li>
+            <li><strong>Stop Readthrough:</strong> Supported — mark stop sites in the RDG to extend translation; probability annotations are visualized and used when predicting products.</li>
             <li><strong>No Frameshifting:</strong> Programmed ribosomal frameshifts are not currently supported</li>
             <li><strong>Linear Probabilities:</strong> Model uses simplified probability calculations; real cells involve complex regulatory networks</li>
             <li><strong>In Silico Only:</strong> Predictions should be validated experimentally - this tool guides hypothesis generation</li>

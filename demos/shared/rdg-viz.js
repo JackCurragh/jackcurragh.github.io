@@ -13,8 +13,9 @@ function calculateTreeLayout(translons, sequence, readthroughStops = [], framesh
     const nodes = [];
     const edges = [];
     const branchSpacing = 80;
-
-    let currentY = 200;
+    // Allow host page to shift the layout baseline down to avoid overlap with frame rails
+    const layoutStartY = (typeof window !== 'undefined' && typeof window.RDG_LAYOUT_Y0 === 'number') ? window.RDG_LAYOUT_Y0 : 200;
+    let currentY = layoutStartY;
     const rootNode = {
         id: 'root',
         x: 0,
@@ -51,8 +52,8 @@ function calculateTreeLayout(translons, sequence, readthroughStops = [], framesh
 
     // Helper function to calculate the Y position of the non-coding line at a given X position
     function getScanningYAtPosition(xPos) {
-        // Start at initial Y
-        let yPos = 200;
+        // Start at initial Y (host may override baseline)
+        let yPos = layoutStartY;
 
         // For each translon whose start is BEFORE xPos, add branchSpacing/2
         for (const t of sortedTranslons) {
@@ -603,15 +604,14 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                         const ex = ntToPixel(segEndNt);
                         const color = region.color || colorForType(region.type);
                         const barHalf = 8;
-                        const yTop = edge.y1 - barHalf;
+                        const yTop = ((edge.y1||0) + (typeof window !== 'undefined' && typeof window.RDG_Y_OFFSET === 'number' ? window.RDG_Y_OFFSET : 0)) - barHalf;
                         const height = barHalf * 2;
-                        // Strongly mute base within span
+                        // Restore original overlay: light fill + strong outline
                         ctx.save();
                         ctx.globalAlpha = 0.7;
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(sx, yTop + 2, ex - sx, height - 4);
                         ctx.restore();
-                        // Thicker outline
                         ctx.strokeStyle = color;
                         ctx.lineWidth = 5;
                         ctx.setLineDash([]);
@@ -740,15 +740,14 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                         const ex = ntToPixel(segEndNt);
                         const color = region.color || colorForType(region.type);
                         const barHalf = 8;
-                        const yTop = edge.y1 - barHalf;
+                        const yTop = ((edge.y1||0) + (window.RDG_Y_OFFSET||0)) - barHalf;
                         const height = barHalf * 2;
-                        // Strongly mute base within span
+                        // Restore original overlay: light fill + strong dashed outline
                         ctx.save();
                         ctx.globalAlpha = 0.7;
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(sx, yTop + 2, ex - sx, height - 4);
                         ctx.restore();
-                        // Thicker dashed outline
                         ctx.strokeStyle = color;
                         ctx.lineWidth = 5;
                         ctx.setLineDash([5, 5]);
@@ -768,21 +767,16 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
                 ctx.fillText(`RT ${(edge.probability * 100).toFixed(0)}%`, midX, y1p - 5);
             }
         } else if (edge.type === 'reinitiation') {
-            const y1p = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
-            const y2p = (edge.y2 || 0) + (window.RDG_Y_OFFSET || 0);
-            console.log(`Drawing reinitiation: x1=${x1}, y1=${y1p}, x2=${x2}, y2=${y2p}, label=${edge.label}`);
             ctx.strokeStyle = '#8b5cf6';
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 4]);
             ctx.globalAlpha = 0.6;
             ctx.beginPath();
-            ctx.moveTo(x1, y1p);
-            ctx.lineTo(x2, y2p);
+            ctx.moveTo(x1, edge.y1);
+            ctx.lineTo(x2, edge.y2);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.globalAlpha = 1;
-
-            // Removed probability labels from reinitiation paths
         }
     });
 
@@ -811,7 +805,7 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
 
     // Legend (optional)
     if (cfg.showLegend) {
-        const legendX = canvas.width - 220;
+        const legendX = canvas.width - 240;
         const legendY = 10;
         const drawChip = (x, y, w, h, color, label, dashed=false) => {
             if (dashed) { ctx.setLineDash([6,3]); }
@@ -820,13 +814,28 @@ function drawTreeLayout(ctx, canvas, translons, sequence, startCodons, FRAME_COL
             ctx.fillStyle = '#334155'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(label, x + w + 6, y + h - 2);
         };
         ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 1;
-        ctx.fillRect(legendX, legendY, 210, 86); ctx.strokeRect(legendX, legendY, 210, 86);
+        ctx.fillRect(legendX, legendY, 230, 102); ctx.strokeRect(legendX, legendY, 230, 102);
         ctx.fillStyle = '#334155'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('Legend', legendX + 8, legendY + 14);
-        const lY = legendY + 26; const h = 10; const w = 34; let curX = legendX + 8;
-        drawChip(curX, lY, w, h, colorForType('RLUC'), 'RLUC'); curX += 74;
-        drawChip(curX, lY, w, h, colorForType('FLUC'), 'FLUC'); curX = legendX + 8; const lY2 = lY + 18;
-        drawChip(curX, lY2, w, h, colorForType('LINKER'), 'LINKER'); curX += 92;
-        drawChip(curX, lY2, w, h, colorForType('RLUC'), 'readthrough', true);
+
+        const h = 10; const w = 34; let curX = legendX + 8; let rowY = legendY + 26;
+
+        // If reporter constructs are present, show reporter legend; else show frame/start/stop legend
+        const hasReporters = Array.isArray(constructRegions) && constructRegions.some(r => ['RLUC','RLUC_WEAK','RLUC_NO_STOP','FLUC','LINKER'].includes(r.type));
+        if (hasReporters) {
+            drawChip(curX, rowY, w, h, colorForType('RLUC'), 'RLUC'); curX += 78;
+            drawChip(curX, rowY, w, h, colorForType('FLUC'), 'FLUC'); curX = legendX + 8; rowY += 18;
+            drawChip(curX, rowY, w, h, colorForType('LINKER'), 'Linker'); curX += 96;
+            drawChip(curX, rowY, w, h, '#f59e0b', 'Readthrough', true);
+        } else {
+            // Frame colors
+            drawChip(curX, rowY, w, h, FRAME_COLORS[0], 'Frame 0'); curX += 86;
+            drawChip(curX, rowY, w, h, FRAME_COLORS[1], 'Frame 1'); curX = legendX + 8; rowY += 18;
+            drawChip(curX, rowY, w, h, FRAME_COLORS[2], 'Frame 2'); curX += 86;
+            // Start/Stop markers (use representative colors)
+            drawChip(curX, rowY, w, h, '#059669', 'Start (AUG)'); curX = legendX + 8; rowY += 18;
+            drawChip(curX, rowY, w, h, '#34d399', 'Near-cognate'); curX += 96;
+            drawChip(curX, rowY, w, h, '#dc2626', 'Stop');
+        }
     }
 }
 

@@ -677,6 +677,21 @@
             margin-top: 0.25rem;
         }
     </style>
+  <style id="pro-theme-overrides">
+    /* Light defaults */
+    :root{ --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#2563eb; --accent2:#1e40af; --border:#e2e8f0; }
+    body{ background: linear-gradient(180deg, var(--bg) 0%, #ffffff 100%) !important; color: var(--text); }
+    .primary-btn{ background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%) !important; color:#fff !important; }
+    .secondary-btn{ background:#f8fafc !important; color:#334155 !important; border:2px solid var(--border) !important; }
+    .visualization, .rdg-model-section, .translons-section, .products, .controls{ background: rgba(255,255,255,0.98) !important; }
+
+    /* Explicit theme overrides */
+    body[data-theme='light']{ --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --accent:#2563eb; --accent2:#1e40af; --border:#e2e8f0; }
+    body[data-theme='dark']{ --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --accent:#60a5fa; --accent2:#3b82f6; --border:#334155; }
+    body[data-theme='dark']{ background: linear-gradient(180deg, var(--bg) 0%, #111827 100%) !important; }
+    body[data-theme='dark'] .secondary-btn{ background:#0f172a !important; color:#e5e7eb !important; border:2px solid var(--border) !important; }
+    body[data-theme='dark'] .visualization, body[data-theme='dark'] .rdg-model-section, body[data-theme='dark'] .translons-section, body[data-theme='dark'] .products, body[data-theme='dark'] .controls{ background: rgba(15,23,42,0.98) !important; }
+  </style>
 </head>
 <body>
     <div class="container">
@@ -723,7 +738,19 @@
                             <button class="secondary-btn speed-btn" data-speed="10" style="width: auto; margin: 0; padding: 0.4rem 0.8rem;">10x</button>
                         </div>
                     </div>
-                    <div class="canvas-container">
+                    <div class="viz-controls" id="viz-controls-advanced" style="margin-top:0.5rem; display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; background:#f8fafc; border-radius:8px; padding:0.5rem; border:1px solid #e2e8f0;">
+  <div class="view-mode-selector" style="display:flex; gap:0.4rem; align-items:center;">
+    <label for="color-mode-select" style="color:#1e293b; font-weight:600; font-size:0.9rem;">Colors:</label>
+    <select id="color-mode-select" style="padding:0.3rem 0.6rem; border-radius:6px; border:2px solid #cbd5e1; font-size:0.85rem; background:white; color:#1e293b;">
+      <option value="frames">Frames</option>
+      <option value="accessibility">Accessibility</option>
+    </select>
+  </div>
+  <label style="display:flex; align-items:center; gap:0.4rem; color:#1e293b; font-size:0.9rem; font-weight:600;">
+    <input type="checkbox" id="legend-toggle"> Legend
+  </label>
+</div>
+<div class="canvas-container">
                         <canvas id="rdg-canvas"></canvas>
                     </div>
                     <div class="hint">
@@ -1011,7 +1038,12 @@
     <script src="../shared/rdg-viz.js"></script>
     <script>
       // Prefer frame-colored mode + ORF bars in standalone RDG demo
-      window.RDGVizConfig = { mode: 'frames', showOrfBarsOnFrames: true };
+      window.RDGVizConfig = { mode: 'frames', showOrfBarsOnFrames: true, showLegend: false };
+      window.RDG_LAYOUT_Y0 = (typeof window.RDG_LAYOUT_Y0 === 'number') ? window.RDG_LAYOUT_Y0 : 220;
+      // Draw at native positions; no global offset
+      try { delete window.RDG_Y_OFFSET; } catch {}
+      // Shift RDG baseline down a bit to avoid overlap with rails
+      window.RDG_LAYOUT_Y0 = 220; // default 200 → 220 px
     </script>
 
     <script>
@@ -1161,6 +1193,14 @@
 
             canvas.height = height;
 
+            // Recompute cached pixel positions for translons to match new width
+            try {
+                translons.forEach(t => {
+                    if (typeof t.startNt === 'number') t.start = ntToPixel(t.startNt);
+                    if (typeof t.endNt === 'number') t.end = ntToPixel(t.endNt);
+                });
+            } catch {}
+
             if (sequence && sequence.length > 0) {
                 drawGraph();
             }
@@ -1251,6 +1291,16 @@
             'UAA': 5, 'UAG': 5, 'UGA': 5
         };
 
+        const BASE_TRANSLATION_SPEED = 5;
+        const baseCodonRateFactors = (() => {
+            const f = {};
+            for (const c in codonDecodingRates) {
+                f[c] = codonDecodingRates[c] / BASE_TRANSLATION_SPEED;
+            }
+            return f;
+        })();
+
+
         // Ribosome types
         const RIBOSOME_STATE = {
             SCANNING: 'scanning',    // 40S small subunit scanning
@@ -1293,7 +1343,8 @@
 
             // Update all codon decoding rates to match new default
             for (const codon in codonDecodingRates) {
-                codonDecodingRates[codon] = translationSpeed;
+                const f = (baseCodonRateFactors[codon] !== undefined) ? baseCodonRateFactors[codon] : 1;
+                codonDecodingRates[codon] = translationSpeed * f;
             }
         });
 
@@ -1302,6 +1353,62 @@
             collisionMode = collisionModeSelect.value;
             console.log('Collision mode changed to:', collisionMode);
         });
+
+        // Theme handling
+        (function(){
+            try {
+                const sel = document.getElementById('theme-select');
+                const apply = (mode) => {
+                    if (!document || !document.body) return;
+                    const m = (mode==='system') ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+                    document.body.setAttribute('data-theme', m);
+                    try { localStorage.setItem('rdg_theme', mode); } catch {}
+                };
+                // init
+                const saved = (function(){ try { return localStorage.getItem('rdg_theme'); } catch { return null; } })();
+                const start = saved || 'light';
+                if (sel) sel.value = start;
+                apply(start);
+                // react to system change if in system mode
+                const media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+                if (media && typeof media.addEventListener==='function') {
+                    media.addEventListener('change', () => {
+                        const cur = (sel && sel.value) || 'light';
+                        if (cur === 'system') apply('system');
+                    });
+                }
+                sel && sel.addEventListener('change', () => apply(sel.value||'light'));
+            } catch (e) { console.warn('theme init failed', e); }
+        })();
+
+        // RDG toolbar controls (color mode, legend, top padding)
+        (function(){
+            try {
+                const colorSel = document.getElementById("color-mode-select");
+                const legendChk = document.getElementById("legend-toggle");
+                                const cfg = (typeof window !== "undefined" && window.RDGVizConfig) ? window.RDGVizConfig : { mode: "frames" };
+                if (colorSel) colorSel.value = (cfg.mode === "accessibility" ? "accessibility" : "frames");
+                if (legendChk) legendChk.checked = !!cfg.showLegend;
+if (colorSel) colorSel.addEventListener("change", () => {
+                    const mode = colorSel.value;
+                    window.RDGVizConfig = Object.assign({}, window.RDGVizConfig||{}, { mode });
+                    drawGraph();
+                });
+                if (legendChk) legendChk.addEventListener("change", () => {
+                    const showLegend = !!legendChk.checked;
+                    window.RDGVizConfig = Object.assign({}, window.RDGVizConfig||{}, { showLegend });
+                    drawGraph();
+                });
+                if (padRange) padRange.addEventListener("input", () => {
+                    const v = parseInt(padRange.value || "220");
+                    if (!isNaN(v)) {
+                        window.RDG_LAYOUT_Y0 = v;
+                        if (padVal) padVal.textContent = v + ' px';
+                        drawGraph();
+                    }
+                });
+            } catch (e) { console.warn("RDG toolbar init failed", e); }
+        })();
 
         // RDG Model parameter controls
         const autoPopulateCheckbox = document.getElementById('auto-populate');
@@ -1586,7 +1693,7 @@
         // RDG Model Parameters for probabilistic initiation
         let rdgModelParams = {
             baseP: 0.9,              // Base initiation probability for ideal AUG (90%)
-            nearCognatePenalty: 0.5, // Multiplier for near-cognate starts (CTG, GTG, TTG, ACG)
+            nearCognatePenalty: 0.5, // Multiplier for near-cognate starts (CUG, GUG, UUG, ACG)
             distanceD0: 40,          // Distance decay constant for auto-population ranking
             gcBonus: 0.3,            // Bonus for high downstream GC (structure that slows scanning)
             reinitiationBase: 0.3,   // Base reinitiation rate
@@ -1761,7 +1868,7 @@
                 translon.metadata.kozakScore = kozak.normalized;
                 translon.metadata.kozakContext = kozak.context;
                 translon.metadata.gcContent = gcContent;
-                translon.metadata.distanceFromCap = distanceFromCap;
+                translon.metadata.distanceFromCap = translon.startNt;
                 translon.metadata.orfLength = orfLength;
                 translon.metadata.spacingToNext = spacingToNext;
             });
@@ -2825,10 +2932,19 @@
                     // Scanning ribosome (40S) - small, positioned on scanning path
                     x = ntToPixel(ribo.ntPosition);
 
-                    // Find current Y position on scanning path
-                    const { nodes, edges } = calculateTreeLayoutLocal();
+                    // Find current Y position on scanning path using RDGViz layout if available
+                    let edges = [];
+                    if (typeof RDGViz !== 'undefined' && typeof RDGViz.calculateTreeLayout === 'function') {
+                        try {
+                            const layout = RDGViz.calculateTreeLayout(translons, sequence, readthroughStops, frameshiftSites);
+                            edges = layout.edges || [];
+                        } catch { edges = []; }
+                    } else {
+                        const r = calculateTreeLayoutLocal();
+                        edges = r.edges || [];
+                    }
                     // Find which scanning edge we're on
-                    let scanY = 200; // Default starting Y
+                    let scanY = (typeof window !== 'undefined' && typeof window.RDG_LAYOUT_Y0 === 'number') ? window.RDG_LAYOUT_Y0 : 200; // baseline
                     for (const edge of edges) {
                         if (edge.type === 'noncoding' && ribo.ntPosition >= edge.x1 && ribo.ntPosition <= edge.x2) {
                             scanY = edge.y1;
@@ -2852,9 +2968,19 @@
 
                     x = translon.start + (translon.end - translon.start) * ribo.progress;
 
-                    const { nodes, edges } = calculateTreeLayoutLocal();
-                    const translationEdge = edges.find(e => e.type === 'translation' && e.translon.name === translon.name);
-                    y = translationEdge ? translationEdge.y1 : translon.y;
+                    let edges = [];
+                    if (typeof RDGViz !== 'undefined' && typeof RDGViz.calculateTreeLayout === 'function') {
+                        try {
+                            const layout = RDGViz.calculateTreeLayout(translons, sequence, readthroughStops, frameshiftSites);
+                            edges = layout.edges || [];
+                        } catch { edges = []; }
+                    } else {
+                        const r = calculateTreeLayoutLocal();
+                        edges = r.edges || [];
+                    }
+                    const translationEdge = edges.find(e => e.type === 'translation' && e.translon && e.translon.name === translon.name);
+                    const baseY = translationEdge ? translationEdge.y1 : translon.y;
+                    y = baseY;
 
                     // Draw 80S ribosome (translating)
                     ctx.fillStyle = translon.color;
@@ -3363,6 +3489,17 @@
         document.querySelector('.speed-btn[data-speed="1"]').style.background = '#667eea';
         document.querySelector('.speed-btn[data-speed="1"]').style.color = 'white';
         document.querySelector('.speed-btn[data-speed="1"]').style.border = '2px solid #667eea';
+
+        // Initialize toolbar values on load
+        try {
+            const colorSel = document.getElementById('color-mode-select');
+            const legendChk = document.getElementById('legend-toggle');
+            if (colorSel) colorSel.value = (window.RDGVizConfig && window.RDGVizConfig.mode) || 'frames';
+            if (legendChk) legendChk.checked = !!(window.RDGVizConfig && window.RDGVizConfig.showLegend);
+            const y0 = (typeof window.RDG_LAYOUT_Y0 === 'number') ? window.RDG_LAYOUT_Y0 : 220;
+            if (padRange) padRange.value = String(y0);
+            if (padVal) padVal.textContent = y0 + ' px';
+        } catch {}
     </script>
 
     <!-- DOCUMENTATION SECTION -->

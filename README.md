@@ -45,6 +45,17 @@ demos/
 - Designed for adding interactive visualizations using:
   - D3.js for data visualization
   - Three.js for 3D graphics
+
+## New Demo: Locus RDG (Splicing + Translation)
+
+The `demos/locus-rdg` tool loads a gene locus from Ensembl, builds a splice graph across all transcripts, and lets you select an event chain (a transcript) to visualize as a Ribosome Decision Graph (RDG).
+
+- Location: `demos/locus-rdg/index.html`
+- Workflow: Enter a gene symbol or Ensembl ID → fetch transcripts/exons (expand=1) → build splice graph → pick a transcript → assemble cDNA → derive RDG translons and render.
+- Shared modules:
+  - `demos/shared/locus-ensembl.js` (REST helpers)
+  - `demos/shared/locus-splice-graph.js` (splice graph + cDNA assembly)
+
   - Canvas API for custom animations
 
 ## Development
