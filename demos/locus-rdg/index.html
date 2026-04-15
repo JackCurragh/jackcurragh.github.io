@@ -24,7 +24,9 @@
     .pane-seq.pane--dense{ height:160px; }
     .pane-rdg.pane--expanded{ height:420px; }
     .pane-rdg.pane--dense{ height:280px; }
-    .pane-body { height: calc(100% - 32px); overflow: hidden; }
+    .pane-body { height: calc(100% - 32px); overflow: auto; }
+    /* Ensure the immediate SVG container scrolls and clips overflow */
+    #splicePane { height:100%; overflow:auto; }
     #sequencePane { height: 100%; overflow:auto; border:1px solid #334155; border-radius:6px; padding:6px; }
     label { color: #cbd5e1; font-weight: 600; display:block; margin-bottom: 0.25rem; }
     input, select { width: 100%; padding: 0.5rem; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; }
@@ -77,6 +79,74 @@
         <div style="margin-top:1rem">
           <h3 style="margin:0 0 .5rem 0">Chains</h3>
           <div id="chainList" class="list"></div>
+        </div>
+        <div style="margin-top:1.5rem">
+          <details style="background: #0b1220; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem;">
+            <summary style="cursor: pointer; font-weight: 600; color: #cbd5e1; flex: 1; user-select: none;">RDG Model Parameters</summary>
+            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
+              <div class="probability-control">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                      <label style="color: #94a3b8;">Base Initiation (P₀)</label>
+                      <span style="font-weight: bold; color: #60a5fa;" id="base-p-value">90%</span>
+                  </div>
+                  <input type="range" id="base-p" min="0.1" max="0.99" step="0.01" value="0.9" style="width: 100%;">
+              </div>
+              <div class="probability-control">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                      <label style="color: #94a3b8;">Near-cognate Penalty</label>
+                      <span style="font-weight: bold; color: #60a5fa;" id="near-cognate-value">0.5×</span>
+                  </div>
+                  <input type="range" id="near-cognate" min="0.1" max="1.0" step="0.05" value="0.5" style="width: 100%;">
+              </div>
+              <div class="probability-control">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                      <label style="color: #94a3b8;">Max Translons</label>
+                      <span style="font-weight: bold; color: #60a5fa;" id="max-translons-value">12</span>
+                  </div>
+                  <input type="range" id="max-translons" min="1" max="25" step="1" value="12" style="width: 100%;">
+              </div>
+              <details style="margin-top: 0.5rem;">
+                  <summary style="cursor: pointer; color: #60a5fa; font-weight: 600; margin-bottom: 0.5rem; user-select: none;">Advanced Parameters</summary>
+                  <div style="margin-top: 0.5rem; padding-left: 0.5rem; border-left: 2px solid #1e293b; display: flex; flex-direction: column; gap: 0.75rem;">
+                      <div class="probability-control">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="color: #94a3b8;">Distance Decay (d₀)</label>
+                              <span style="font-weight: bold; color: #60a5fa;" id="distance-d0-value">40 nt</span>
+                          </div>
+                          <input type="range" id="distance-d0" min="10" max="100" step="5" value="40" style="width: 100%;">
+                      </div>
+                      <div class="probability-control">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="color: #94a3b8;">Downstream GC Bonus</label>
+                              <span style="font-weight: bold; color: #60a5fa;" id="gc-bonus-value">+0.3</span>
+                          </div>
+                          <input type="range" id="gc-bonus" min="0" max="1" step="0.1" value="0.3" style="width: 100%;">
+                      </div>
+                      <div class="probability-control">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="color: #94a3b8;">Reinitiation Base</label>
+                              <span style="font-weight: bold; color: #60a5fa;" id="reinit-base-value">30%</span>
+                          </div>
+                          <input type="range" id="reinit-base" min="0.1" max="0.9" step="0.05" value="0.3" style="width: 100%;">
+                      </div>
+                      <div class="probability-control">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="color: #94a3b8;">uORF Length Decay</label>
+                              <span style="font-weight: bold; color: #60a5fa;" id="length-l0-value">100 nt</span>
+                          </div>
+                          <input type="range" id="length-l0" min="30" max="300" step="10" value="100" style="width: 100%;">
+                      </div>
+                      <div class="probability-control">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="color: #94a3b8;">Spacing Decay</label>
+                              <span style="font-weight: bold; color: #60a5fa;" id="spacing-s0-value">50 nt</span>
+                          </div>
+                          <input type="range" id="spacing-s0" min="10" max="150" step="5" value="50" style="width: 100%;">
+                      </div>
+                  </div>
+              </details>
+            </div>
+          </details>
         </div>
       </div>
       <div class="panel">
@@ -174,6 +244,17 @@
     starts: []
   };
 
+  const rdgModelParams = {
+    baseP: 0.9,
+    nearCognatePenalty: 0.5,
+    distanceD0: 40,
+    gcBonus: 0.3,
+    reinitiationBase: 0.3,
+    lengthL0: 100,
+    spacingS0: 50,
+    maxTranslons: 12
+  };
+
   function setStatus(msg, ok=false) {
     statusEl.textContent = msg;
     statusEl.style.color = ok ? '#22c55e' : '#94a3b8';
@@ -253,9 +334,9 @@
       // assemble live and render sequence + RDG
       const dna = SpliceCore.assembleChainDNA(store.model, store.locus, { blocks: currentPath });
       const rna = SpliceCore.toRNA(dna);
-      const feats = RDGEngine.identifyFeatures(rna);
+      const feats = RDGEngine.identifyFeatures(rna, { params: rdgModelParams });
       const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
-      const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+      const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: rdgModelParams.maxTranslons, params: rdgModelParams });
       SequencePane.render(seqPaneEl, rna, { wrap: 60 });
       drawRDG(translons, rna, starts);
     });
@@ -323,9 +404,9 @@
       let t = (lastTranslons||[]).find(t => t.startNt === hit.pos && t.frame === hit.frame);
       if (!t) {
         // rebuild to include this start
-        const feats = RDGEngine.identifyFeatures(lastSequence);
+        const feats = RDGEngine.identifyFeatures(lastSequence, { params: rdgModelParams });
         const startsAnn = feats.predicted.startCodons || RDGEngine.findStartCodons(lastSequence);
-        const trans = RDGEngine.buildTranslons(lastSequence, { features: feats, startCodons: startsAnn, limit: 12, ensureStarts: [hit.pos] });
+        const trans = RDGEngine.buildTranslons(lastSequence, { features: feats, startCodons: startsAnn, limit: rdgModelParams.maxTranslons, ensureStarts: [hit.pos], params: rdgModelParams });
         lastStartCodons = startsAnn; lastTranslons = trans;
         redrawRDG();
         t = (trans||[]).find(tt => tt.startNt === hit.pos && tt.frame === hit.frame);
@@ -394,9 +475,9 @@
     const rna = SpliceCore.toRNA(dna);
 
     // Derive RDG translons from this transcript sequence
-    const feats = RDGEngine.identifyFeatures(rna);
+    const feats = RDGEngine.identifyFeatures(rna, { params: rdgModelParams });
     const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
-    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: rdgModelParams.maxTranslons, params: rdgModelParams });
 
     // Sequence pane + RDG
     SequencePane.render(seqPaneEl, rna, { wrap: 60 });
@@ -423,9 +504,9 @@
     if (!ch) return;
     const dna = SpliceCore.assembleChainDNA(store.model, store.locus, ch);
     const rna = SpliceCore.toRNA(dna);
-    const feats = RDGEngine.identifyFeatures(rna);
+    const feats = RDGEngine.identifyFeatures(rna, { params: rdgModelParams });
     const starts = feats.predicted.startCodons || RDGEngine.findStartCodons(rna);
-    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: 12 });
+    const translons = RDGEngine.buildTranslons(rna, { features: feats, startCodons: starts, limit: rdgModelParams.maxTranslons, params: rdgModelParams });
     SequencePane.render(seqPaneEl, rna, { wrap: 60 });
     const exPath = (SpliceCore.blocksToExons && store.model) ? (SpliceCore.blocksToExons(store.model, ch.blocks)||[]) : [];
     if (spliceView && exPath.length) spliceView.highlightChain({ nodeType: 'exon', nodes: exPath });
@@ -449,6 +530,59 @@
     drawTreeLayout(ctx, rdgCanvas, translons, rna, starts, FRAME_COLORS, null, [], []);
     wireRdgInteractions();
   }
+
+  function recalculateActiveRDG() {
+    if (lastSequence) {
+      const feats = RDGEngine.identifyFeatures(lastSequence, { params: rdgModelParams });
+      const startsAnn = feats.predicted.startCodons || RDGEngine.findStartCodons(lastSequence);
+      const trans = RDGEngine.buildTranslons(lastSequence, { features: feats, startCodons: startsAnn, limit: rdgModelParams.maxTranslons, params: rdgModelParams });
+      lastStartCodons = startsAnn;
+      lastTranslons = trans;
+      redrawRDG();
+    }
+  }
+
+  // Hook up parameter UI
+  document.getElementById('base-p')?.addEventListener('input', (e) => {
+    rdgModelParams.baseP = parseFloat(e.target.value);
+    document.getElementById('base-p-value').textContent = (rdgModelParams.baseP * 100).toFixed(0) + '%';
+    recalculateActiveRDG();
+  });
+  document.getElementById('near-cognate')?.addEventListener('input', (e) => {
+    rdgModelParams.nearCognatePenalty = parseFloat(e.target.value);
+    document.getElementById('near-cognate-value').textContent = rdgModelParams.nearCognatePenalty.toFixed(2) + '×';
+    recalculateActiveRDG();
+  });
+  document.getElementById('max-translons')?.addEventListener('input', (e) => {
+    rdgModelParams.maxTranslons = parseInt(e.target.value);
+    document.getElementById('max-translons-value').textContent = rdgModelParams.maxTranslons;
+    recalculateActiveRDG();
+  });
+  document.getElementById('distance-d0')?.addEventListener('input', (e) => {
+    rdgModelParams.distanceD0 = parseInt(e.target.value);
+    document.getElementById('distance-d0-value').textContent = rdgModelParams.distanceD0 + ' nt';
+    recalculateActiveRDG();
+  });
+  document.getElementById('gc-bonus')?.addEventListener('input', (e) => {
+    rdgModelParams.gcBonus = parseFloat(e.target.value);
+    document.getElementById('gc-bonus-value').textContent = '+' + rdgModelParams.gcBonus.toFixed(1);
+    recalculateActiveRDG();
+  });
+  document.getElementById('reinit-base')?.addEventListener('input', (e) => {
+    rdgModelParams.reinitiationBase = parseFloat(e.target.value);
+    document.getElementById('reinit-base-value').textContent = (rdgModelParams.reinitiationBase * 100).toFixed(0) + '%';
+    recalculateActiveRDG();
+  });
+  document.getElementById('length-l0')?.addEventListener('input', (e) => {
+    rdgModelParams.lengthL0 = parseInt(e.target.value);
+    document.getElementById('length-l0-value').textContent = rdgModelParams.lengthL0 + ' nt';
+    recalculateActiveRDG();
+  });
+  document.getElementById('spacing-s0')?.addEventListener('input', (e) => {
+    rdgModelParams.spacingS0 = parseInt(e.target.value);
+    document.getElementById('spacing-s0-value').textContent = rdgModelParams.spacingS0 + ' nt';
+    recalculateActiveRDG();
+  });
 
   function redrawRDG(){ if (lastSequence && lastStartCodons && lastTranslons) { drawRDG(lastTranslons, lastSequence, lastStartCodons); } }
 

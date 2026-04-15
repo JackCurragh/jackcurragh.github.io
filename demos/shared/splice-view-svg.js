@@ -617,8 +617,11 @@
       try {
         const w = width - margin.left - margin.right;
         const total = Math.max(1, lanesCount());
-        const h = yForLane(total-1) + rectHeight() + 48;
-        bg.attr('x', 0).attr('y', 0).attr('width', w).attr('height', Math.max(120, h));
+        const bottomPad = Math.max(60, Math.round(rectHeight()/2) + 60);
+        const h = yForLane(total-1) + bottomPad;
+        const finalSvgHeight = Math.max(height, h + margin.top + margin.bottom);
+        svg.attr('height', finalSvgHeight);
+        bg.attr('x', 0).attr('y', 0).attr('width', w).attr('height', finalSvgHeight);
       } catch {}
       drawSegments();
       drawJunctions();
