@@ -2256,14 +2256,18 @@ if (colorSel) colorSel.addEventListener("change", () => {
 
         // Update initiation rate
         window.updateInitiationRate = function(index, value) {
-            translons[index].initiationRate = parseInt(value) / 100;
-            document.getElementById(`init-${index}`).textContent = value + '%';
+            if (!translons[index]) return;
+            translons[index].initiationRate = parseFloat(value) / 100;
+            const label = document.getElementById(`modal-init-${index}`) || document.getElementById(`init-${index}`);
+            if (label) label.textContent = `${Math.round(parseFloat(value))}%`;
         };
 
         // Update reinitiation rate
         window.updateReinitiationRate = function(index, value) {
-            translons[index].reinitiationRate = parseInt(value) / 100;
-            document.getElementById(`reinit-${index}`).textContent = value + '%';
+            if (!translons[index]) return;
+            translons[index].reinitiationRate = parseFloat(value) / 100;
+            const label = document.getElementById(`modal-reinit-${index}`) || document.getElementById(`reinit-${index}`);
+            if (label) label.textContent = `${Math.round(parseFloat(value))}%`;
         };
 
         // Remove translon
@@ -2276,11 +2280,50 @@ if (colorSel) colorSel.addEventListener("change", () => {
             resizeCanvas(); // Resize canvas after removing translon
         };
 
+        function getCanvasPointerPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+            const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+            return {
+                x: (event.clientX - rect.left) * scaleX,
+                y: (event.clientY - rect.top) * scaleY
+            };
+        }
+
+        function getTranslonIndexForEdge(edge) {
+            return translons.findIndex(t =>
+                t.frame === edge.translon?.frame &&
+                t.startNt === edge.translon?.startNt &&
+                t.endNt === edge.translon?.endNt
+            );
+        }
+
+        function isTranslonEdgeHit(edge, x, y) {
+            const edgeToPixel = window.RDG_NT_TO_PIXEL || ntToPixel;
+            const x1 = edgeToPixel(edge.x1);
+            const x2 = edgeToPixel(edge.x2);
+            const edgeY = (edge.y1 || 0) + (window.RDG_Y_OFFSET || 0);
+
+            // Include the visible text label in the hitbox. Short uORFs can render
+            // as tiny bars, so strict bar-only clicking makes them feel dead.
+            const displayName = edge.translon?.displayName || edge.translon?.name || '';
+            const labelWidth = Math.min(Math.max(displayName.length * 8, 48), 120);
+            const hitXMin = Math.min(x1, x2) - 10;
+            const hitXMax = Math.max(x1, x2) + labelWidth + 14;
+
+            let hitThreshold = 18;
+            if (viewMode === 'flux' && edge.translon) {
+                const usage = translonUsage[edge.translon.name] || 0;
+                const maxUsage = Math.max(...Object.values(translonUsage), 1);
+                hitThreshold = Math.max(18, (usage / maxUsage) * 12);
+            }
+
+            return x >= hitXMin && x <= hitXMax && Math.abs(y - edgeY) <= hitThreshold;
+        }
+
         // Add translon on canvas click
         canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const { x, y } = getCanvasPointerPosition(e);
             const clickNt = pixelToNt(x);
 
             // Get current click mode
@@ -2288,24 +2331,13 @@ if (colorSel) colorSel.addEventListener("change", () => {
             console.log(`Canvas clicked at x=${x}, y=${y}, nt=${clickNt}, mode=${clickMode}`);
 
             // Check if clicking on an existing translon
-            const { edges } = calculateTreeLayoutLocal();
-            for (const edge of edges) {
+            const interactionEdges = (Array.isArray(window.RDG_LAST_EDGES) && window.RDG_LAST_EDGES.length)
+                ? window.RDG_LAST_EDGES
+                : calculateTreeLayoutLocal().edges;
+            for (const edge of interactionEdges) {
                 if (edge.type === 'translation') {
-                    const x1 = ntToPixel(edge.x1);
-                    const x2 = ntToPixel(edge.x2);
-                    const edgeY = edge.y1;
-
-                    // In flux mode, use variable thickness for hit detection
-                    let hitThreshold = 10;
-                    if (viewMode === 'flux') {
-                        const usage = translonUsage[edge.translon.name] || 0;
-                        const maxUsage = Math.max(...Object.values(translonUsage), 1);
-                        hitThreshold = Math.max(5, (usage / maxUsage) * 12);
-                    }
-
-                    // Check if click is on this translation bar
-                    if (x >= x1 && x <= x2 && Math.abs(y - edgeY) < hitThreshold) {
-                        const translonIndex = translons.findIndex(t => t.name === edge.translon.name);
+                    if (isTranslonEdgeHit(edge, x, y)) {
+                        const translonIndex = getTranslonIndexForEdge(edge);
                         if (translonIndex !== -1) {
                             showTranslonModal(translonIndex);
                             return;
@@ -2315,7 +2347,9 @@ if (colorSel) colorSel.addEventListener("change", () => {
             }
 
             // Frame Y coordinates used throughout
-            const frameY = [80, 110, 140]; // Frame Y coordinates (matching rdg-viz.js)
+            const frameY = (Array.isArray(window.RDG_FRAME_Y) && window.RDG_FRAME_Y.length === 3)
+                ? window.RDG_FRAME_Y
+                : [90, 120, 150];
 
             // Check for stop codon clicks (for readthrough marking)
             if (clickMode === 'readthrough') {

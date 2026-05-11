@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ribosome Decision Dash</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            color-scheme: dark;
+            --bg: #0a0e1a;
+            --panel: #101827;
+            --line: rgba(241, 245, 249, 0.13);
+            --text: #f1f5f9;
+            --dim: #8b9aae;
+            --frame-0: #00d4ff;
+            --frame-1: #ff6b35;
+            --frame-2: #a855f7;
+            --translon: #22c55e;
+            --uorf: #f59e0b;
+            --stop: #ef4444;
+            --tc: #06b6d4;
+            --ribosome: #facc15;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 0%, rgba(0, 212, 255, 0.14), transparent 26rem), var(--bg);
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            padding: 1rem;
+        }
+
+        .shell {
+            width: min(1240px, 100%);
+            margin: 0 auto;
+        }
+
+        .back-link {
+            color: #8be9ff;
+            display: inline-block;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        h1 {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: clamp(1.9rem, 4vw, 3.25rem);
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        .subtitle {
+            color: var(--dim);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.35;
+            margin-top: 0.45rem;
+            max-width: 820px;
+        }
+
+        .game-shell {
+            background: rgba(16, 24, 39, 0.82);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+        }
+
+        .hud {
+            align-items: center;
+            background: rgba(7, 11, 21, 0.86);
+            border-bottom: 1px solid var(--line);
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: 1.2fr 1fr 1fr 1.3fr;
+            min-height: 64px;
+            padding: 0.75rem 1rem;
+        }
+
+        .hud-item span {
+            color: var(--dim);
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .hud-item strong {
+            display: block;
+            font-size: 1.15rem;
+            margin-top: 0.15rem;
+            white-space: nowrap;
+        }
+
+        .pips {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.35rem;
+        }
+
+        .pip {
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(241, 245, 249, 0.18);
+            border-radius: 3px;
+            background: #172033;
+        }
+
+        .pip.filled {
+            background: var(--tc);
+            box-shadow: 0 0 16px rgba(6, 182, 212, 0.55);
+        }
+
+        canvas {
+            background: var(--bg);
+            display: block;
+            height: min(72vh, 720px);
+            min-height: 560px;
+            touch-action: manipulation;
+            width: 100%;
+        }
+
+        .controls {
+            background: rgba(7, 11, 21, 0.86);
+            border-top: 1px solid var(--line);
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: 1fr 1fr;
+            padding: 0.75rem;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            color: #07111f;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 900;
+            min-height: 54px;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #option-a {
+            background: var(--frame-0);
+        }
+
+        #option-b {
+            background: var(--translon);
+        }
+
+        .notes {
+            color: var(--dim);
+            display: grid;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            gap: 0.5rem;
+            grid-template-columns: repeat(3, 1fr);
+            line-height: 1.45;
+            margin-top: 0.85rem;
+        }
+
+        .note {
+            background: rgba(16, 24, 39, 0.72);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 0.8rem;
+        }
+
+        .note strong {
+            color: var(--text);
+        }
+
+        @media (max-width: 850px) {
+            body {
+                padding: 0.75rem;
+            }
+
+            header {
+                display: block;
+            }
+
+            .hud {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            canvas {
+                height: 66vh;
+                min-height: 460px;
+            }
+
+            .notes {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <a class="back-link" href="../index.html">← Back to Demos</a>
+        <header>
+            <div>
+                <h1>Ribosome Decision Dash</h1>
+                <p class="subtitle">Use the zoomed-out RDG map above to read the locus ahead, then make timed choices in the ribosome gameplay lane below.</p>
+            </div>
+        </header>
+
+        <main class="game-shell">
+            <section class="hud" aria-label="Game status">
+                <div class="hud-item">
+                    <span>TC/eIF</span>
+                    <div class="pips" id="tc-pips" aria-label="TC/eIF resource"></div>
+                </div>
+                <div class="hud-item"><span>Score</span><strong id="score">0 x1.0</strong></div>
+                <div class="hud-item"><span>Distance</span><strong id="distance">0 nt</strong></div>
+                <div class="hud-item"><span>State</span><strong id="ribosome-state">40S scanning</strong></div>
+            </section>
+            <canvas id="game" width="1200" height="720"></canvas>
+            <section class="controls">
+                <button id="option-a" type="button">↑ W Special branch</button>
+                <button id="option-b" type="button">↓ S Default path</button>
+            </section>
+        </main>
+
+        <section class="notes">
+            <p class="note"><strong>Map first:</strong> the upper RDG is a zoomed-out locus map with overlapping translons, stops, readthroughs, and frame changes.</p>
+            <p class="note"><strong>Resources:</strong> stops auto-reinitiate if TC/eIF remains. Structured leader blocks stop scanning, but a translated overlapping ORF can carry the ribosome past them.</p>
+            <p class="note"><strong>Controls:</strong> Space starts/restarts. W/↑ takes the special edge. S/↓ takes the default edge. Backtick toggles debug.</p>
+        </section>
+    </div>
+
+    <script>
+        (() => {
+            const canvas = document.getElementById('game');
+            const ctx = canvas.getContext('2d');
+            const pipsEl = document.getElementById('tc-pips');
+            const scoreEl = document.getElementById('score');
+            const distanceEl = document.getElementById('distance');
+            const ribosomeStateEl = document.getElementById('ribosome-state');
+            const optionAButton = document.getElementById('option-a');
+            const optionBButton = document.getElementById('option-b');
+
+            const COLORS = {
+                bg: '#0a0e1a',
+                panel: '#101827',
+                text: '#f1f5f9',
+                dim: '#8b9aae',
+                frame0: '#00d4ff',
+                frame1: '#ff6b35',
+                frame2: '#a855f7',
+                translon: '#22c55e',
+                uorf: '#f59e0b',
+                stop: '#ef4444',
+                tc: '#06b6d4',
+                ribosome: '#facc15'
+            };
+
+            const MAX_TC = 5;
+            const PLAY_NTPERPIXEL = 4;
+            const MAP_NTPERPIXEL = 1.25;
+            const START_SPEED = 60;
+            const SPEED_STEP = 2;
+            const SPEED_INTERVAL = 20;
+            const DECISION_WINDOW_NT = 34;
+            const SEGMENT_LENGTH = 300;
+            const FRAME_COLORS = [COLORS.frame0, COLORS.frame1, COLORS.frame2];
+            const STATE_LABELS = {
+                ready: 'ready',
+                scanning_40s: '40S scanning',
+                recognising_48s: '48S recognising',
+                translating_80s: '80S translating',
+                frameshifted: 'frameshifted',
+                readthrough: 'readthrough',
+                terminating: 'terminating',
+                reinitiating: 'reinitiating',
+                dead: 'dead'
+            };
+
+            let layout = {
+                width: 1200,
+                height: 720,
+                hudHeight: 0,
+                rdgTop: 0,
+                rdgHeight: 252,
+                ribTop: 252,
+                ribHeight: 468,
+                hitLineX: 300,
+                railY: [86, 145, 204],
+                ribRibbonY: 486
+            };
+
+            let game = null;
+            let lastTs = 0;
+            let rafId = null;
+
+            function initialGame() {
+                const state = {
+                    phase: 'ready',
+                    scrollOffset: -120,
+                    scrollSpeed: START_SPEED,
+                    elapsed: 0,
+                    score: 0,
+                    combo: 0,
+                    tcEif: 3,
+                    ribosomeState: 'scanning_40s',
+                    currentFrame: 0,
+                    currentOrfId: null,
+                    segments: [],
+                    nodes: [],
+                    bars: [],
+                    edges: [],
+                    codons: [],
+                    decisionPending: null,
+                    resolvedEffects: [],
+                    nextSegmentIndex: 0,
+                    debug: false,
+                    flash: null,
+                    message: 'Press Space or tap the canvas to start'
+                };
+                enqueueSegments(state, 4);
+                seedCodons(state);
+                return state;
+            }
+
+            function startGame() {
+                game = initialGame();
+                game.phase = 'running';
+                game.message = '';
+                syncHud();
+            }
+
+            function restartGame() {
+                startGame();
+            }
+
+            function seedCodons(state) {
+                state.codons = [];
+                for (let nt = -60; nt < 1500; nt += 3) {
+                    state.codons.push({ nt, codon: randomCodon(), optimality: Math.random() });
+                }
+            }
+
+            function randomCodon() {
+                const bases = ['A', 'U', 'G', 'C'];
+                return bases[Math.floor(Math.random() * bases.length)] +
+                    bases[Math.floor(Math.random() * bases.length)] +
+                    bases[Math.floor(Math.random() * bases.length)];
+            }
+
+            function enqueueSegments(state, minBuffered) {
+                while (state.segments.length - state.nextSegmentIndex < minBuffered) {
+                    const startNt = state.segments.length * SEGMENT_LENGTH;
+                    const template = chooseTemplate(state.segments.length);
+                    const segment = instantiateSegment(template, startNt, state.segments.length);
+                    state.segments.push(segment);
+                    state.nodes.push(...segment.nodes);
+                    state.bars.push(...segment.bars);
+                    state.edges.push(...segment.edges);
+                }
+            }
+
+            function chooseTemplate(index) {
+                if (index < SEGMENT_TEMPLATES.length) return SEGMENT_TEMPLATES[index];
+                return SEGMENT_TEMPLATES[Math.floor(Math.random() * SEGMENT_TEMPLATES.length)];
+            }
+
+            function instantiateSegment(template, startNt, index) {
+                const suffix = `${template.id}_${index}`;
+                const nodes = template.nodes.map(node => {
+                    const effects = {};
+                    if (node.effects) {
+                        Object.entries(node.effects).forEach(([choice, effect]) => {
+                            effects[choice] = {
+                                ...effect,
+                                orfId: effect.orfId ? `${suffix}_${effect.orfId}` : effect.orfId
+                            };
+                        });
+                    }
+                    return {
+                        ...node,
+                        id: `${suffix}_${node.id}`,
+                        segmentId: suffix,
+                        requiresOrf: node.requiresOrf ? `${suffix}_${node.requiresOrf}` : null,
+                        bypassOrf: node.bypassOrf ? `${suffix}_${node.bypassOrf}` : null,
+                        effects: node.effects ? effects : node.effects,
+                        ntPos: startNt + node.ntPos,
+                        fired: false,
+                        resolved: false
+                    };
+                });
+                const bars = template.bars.map(bar => ({
+                    ...bar,
+                    id: `${suffix}_${bar.id}`,
+                    startNt: startNt + bar.startNt,
+                    endNt: startNt + bar.endNt
+                }));
+                const edges = template.edges.map(edge => ({
+                    ...edge,
+                    id: `${suffix}_${edge.id}`,
+                    fromNt: startNt + edge.fromNt,
+                    toNt: startNt + edge.toNt,
+                    selectedAt: null
+                }));
+                return { id: suffix, startNt, endNt: startNt + SEGMENT_LENGTH, nodes, bars, edges };
+            }
+
+            const SEGMENT_TEMPLATES = [
+                {
+                    id: 'weak_uorf_trap',
+                    label: 'Weak uORF trap',
+                    nodes: [
+                        {
+                            id: 'near_aug',
+                            type: 'aug_nearcognate',
+                            ntPos: 50,
+                            frame: 0,
+                            label: 'CUG weak context',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate weak uORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'B',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 0, orfId: 'weak_bar', tcDelta: -1, score: 0, message: 'Weak uORF trapped the 40S' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 75, message: 'Weak CUG skipped' }
+                            }
+                        },
+                        {
+                            id: 'weak_stop',
+                            type: 'stop',
+                            ntPos: 125,
+                            frame: 0,
+                            label: 'weak uORF stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'weak_bar'
+                        },
+                        {
+                            id: 'tc_pickup',
+                            type: 'tc_pickup',
+                            ntPos: 225,
+                            frame: 0,
+                            label: 'TC/eIF'
+                        },
+                        {
+                            id: 'overlap_start',
+                            type: 'aug_strong',
+                            ntPos: 82,
+                            frame: 1,
+                            label: 'AUG overlap',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate overlap ORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 1, orfId: 'overlap_bar', tcDelta: 0, score: 100, message: '80S entered frame +1 overlap ORF' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 0, message: 'Overlap start skipped' }
+                            }
+                        },
+                        {
+                            id: 'overlap_stop',
+                            type: 'stop',
+                            ntPos: 190,
+                            frame: 1,
+                            label: 'UAG overlap stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'overlap_bar'
+                        },
+                        { id: 'structure_block', type: 'boundary', ntPos: 150, frame: 0, label: 'structured block', bypassOrf: 'overlap_bar' }
+                    ],
+                    bars: [
+                        { id: 'weak_bar', startNt: 50, endNt: 125, frame: 0, type: 'uorf', label: 'weak uORF' },
+                        { id: 'overlap_bar', startNt: 82, endNt: 190, frame: 1, type: 'uorf', label: 'overlap ORF' }
+                    ],
+                    edges: [
+                        { id: 'weak_branch', type: 'branch', fromNt: 50, toNt: 125, fromFrame: 0, toFrame: 0 },
+                        { id: 'overlap_branch', type: 'branch', fromNt: 82, toNt: 190, fromFrame: 0, toFrame: 1 },
+                        { id: 'weak_scan', type: 'scan', fromNt: 50, toNt: 260, fromFrame: 0, toFrame: 0 }
+                    ]
+                },
+                {
+                    id: 'short_regulatory_uorf',
+                    label: 'Short regulatory uORF',
+                    nodes: [
+                        {
+                            id: 'strong_aug',
+                            type: 'aug_strong',
+                            ntPos: 50,
+                            frame: 0,
+                            label: 'AUG strong Kozak',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate short uORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 0, orfId: 'short_bar', tcDelta: 0, score: 100, message: 'Short uORF translated; factors retained' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 20, message: 'Strong uORF skipped' }
+                            }
+                        },
+                        {
+                            id: 'uorf_stop',
+                            type: 'stop',
+                            ntPos: 140,
+                            frame: 0,
+                            label: 'uORF stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'short_bar'
+                        },
+                        {
+                            id: 'shadow_start',
+                            type: 'aug_strong',
+                            ntPos: 86,
+                            frame: 2,
+                            label: 'AUG overlap',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate frame +2 ORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 2, orfId: 'shadow_bar', tcDelta: 0, score: 110, message: '80S entered frame +2 overlap ORF' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 0, message: 'Frame +2 start skipped' }
+                            }
+                        },
+                        {
+                            id: 'shadow_stop',
+                            type: 'stop',
+                            ntPos: 218,
+                            frame: 2,
+                            label: 'UGA frame +2 stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'shadow_bar'
+                        },
+                        { id: 'structure_block', type: 'boundary', ntPos: 172, frame: 0, label: 'structured block', bypassOrf: 'shadow_bar' }
+                    ],
+                    bars: [
+                        { id: 'short_bar', startNt: 50, endNt: 140, frame: 0, type: 'uorf', label: 'short uORF' },
+                        { id: 'shadow_bar', startNt: 86, endNt: 218, frame: 2, type: 'uorf', label: 'overlap ORF' }
+                    ],
+                    edges: [
+                        { id: 'short_branch', type: 'branch', fromNt: 50, toNt: 140, fromFrame: 0, toFrame: 0 },
+                        { id: 'shadow_branch', type: 'branch', fromNt: 86, toNt: 218, fromFrame: 0, toFrame: 2 },
+                        { id: 'short_reinit', type: 'reinit', fromNt: 140, toNt: 225, fromFrame: 0, toFrame: 0 }
+                    ]
+                },
+                {
+                    id: 'readthrough_escape',
+                    label: 'Stop readthrough',
+                    nodes: [
+                        {
+                            id: 'rt_aug',
+                            type: 'aug_strong',
+                            ntPos: 40,
+                            frame: 0,
+                            label: 'AUG ORF',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate ORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 0, orfId: 'rt_bar_full', tcDelta: 0, score: 80, message: '80S entered the ORF' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 0, message: 'ORF bypassed; readthrough path inactive' }
+                            }
+                        },
+                        {
+                            id: 'read_stop',
+                            type: 'readthrough',
+                            ntPos: 150,
+                            frame: 0,
+                            label: 'UGA readthrough site',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'rt_bar_full',
+                            optionA: { label: 'Readthrough', edge: 'special' },
+                            optionB: { label: 'Normal stop', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'readthrough', frame: 0, orfId: 'rt_bar_full', tcDelta: 0, score: 150, message: 'Readthrough kept elongation alive' },
+                                B: { state: 'terminating', frame: 0, tcDelta: -1, score: 0, message: 'Normal stop spent TC/eIF' }
+                            }
+                        },
+                        {
+                            id: 'rt_extension_stop',
+                            type: 'stop',
+                            ntPos: 260,
+                            frame: 0,
+                            label: 'extension stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'rt_bar_full'
+                        },
+                        {
+                            id: 'rt_overlap_start',
+                            type: 'aug_strong',
+                            ntPos: 96,
+                            frame: 1,
+                            label: 'AUG overlap',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate overlap ORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 1, orfId: 'rt_overlap', tcDelta: 0, score: 100, message: '80S entered overlapping ORF' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 0, message: 'Overlap ORF skipped' }
+                            }
+                        },
+                        {
+                            id: 'rt_overlap_stop',
+                            type: 'stop',
+                            ntPos: 222,
+                            frame: 1,
+                            label: 'UAG overlap stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'rt_overlap'
+                        },
+                        { id: 'structure_block', type: 'boundary', ntPos: 168, frame: 0, label: 'structured block', bypassOrf: 'rt_overlap' }
+                    ],
+                    bars: [
+                        { id: 'rt_bar_full', startNt: 40, endNt: 260, frame: 0, type: 'cds', label: 'ORF with readthrough' },
+                        { id: 'rt_overlap', startNt: 96, endNt: 222, frame: 1, type: 'uorf', label: 'overlap ORF' }
+                    ],
+                    edges: [
+                        { id: 'rt_branch', type: 'branch', fromNt: 40, toNt: 150, fromFrame: 0, toFrame: 0 },
+                        { id: 'rt_overlap_branch', type: 'branch', fromNt: 96, toNt: 222, fromFrame: 0, toFrame: 1 },
+                        { id: 'readthrough_edge', type: 'readthrough', fromNt: 150, toNt: 260, fromFrame: 0, toFrame: 0 }
+                    ]
+                },
+                {
+                    id: 'frameshift_escape',
+                    label: 'Frameshift escape',
+                    nodes: [
+                        {
+                            id: 'fs_aug',
+                            type: 'aug_strong',
+                            ntPos: 35,
+                            frame: 0,
+                            label: 'AUG frame 0',
+                            requiresState: 'scanning_40s',
+                            optionA: { label: 'Initiate frame 0 ORF', edge: 'special' },
+                            optionB: { label: 'Scan past', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'translating_80s', frame: 0, orfId: 'fs_bar_a', tcDelta: 0, score: 80, message: '80S translating frame 0' },
+                                B: { state: 'scanning_40s', frame: 0, tcDelta: 0, score: 0, message: 'Frameshift site bypassed' }
+                            }
+                        },
+                        {
+                            id: 'shift_site',
+                            type: 'frameshift',
+                            ntPos: 120,
+                            frame: 0,
+                            targetFrame: 1,
+                            label: '+1 slippery site',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'fs_bar_a',
+                            optionA: { label: 'Frameshift +1', edge: 'special' },
+                            optionB: { label: 'Stay in frame', edge: 'default' },
+                            correct: 'A',
+                            defaultChoice: 'B',
+                            effects: {
+                                A: { state: 'frameshifted', frame: 1, orfId: 'fs_bar_b', tcDelta: 0, score: 150, message: 'Frameshift avoided the frame 0 stop' },
+                                B: { state: 'translating_80s', frame: 0, orfId: 'fs_bar_a', tcDelta: 0, score: 0, message: 'Stayed in frame; stop ahead' }
+                            }
+                        },
+                        {
+                            id: 'frame0_stop',
+                            type: 'stop',
+                            ntPos: 200,
+                            frame: 0,
+                            label: 'UAA frame 0 stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'fs_bar_a'
+                        },
+                        {
+                            id: 'frame1_stop',
+                            type: 'stop',
+                            ntPos: 250,
+                            frame: 1,
+                            label: 'UAG +1 stop',
+                            requiresState: 'translating_80s',
+                            requiresOrf: 'fs_bar_b'
+                        },
+                        { id: 'structure_block', type: 'boundary', ntPos: 168, frame: 0, label: 'structured block', bypassOrf: 'fs_bar_a' }
+                    ],
+                    bars: [
+                        { id: 'fs_bar_a', startNt: 35, endNt: 200, frame: 0, type: 'cds', label: 'frame 0 ORF' },
+                        { id: 'fs_bar_b', startNt: 120, endNt: 250, frame: 1, type: 'cds', label: '+1 continuation' }
+                    ],
+                    edges: [
+                        { id: 'fs_branch', type: 'branch', fromNt: 35, toNt: 120, fromFrame: 0, toFrame: 0 },
+                        { id: 'fs_edge', type: 'frameshift', fromNt: 120, toNt: 154, fromFrame: 0, toFrame: 1 },
+                        { id: 'fs_default', type: 'scan', fromNt: 120, toNt: 200, fromFrame: 0, toFrame: 0 }
+                    ]
+                }
+            ];
+
+            function update(dt, timestamp) {
+                if (!game) return;
+                if (game.phase === 'ready' || game.phase === 'gameover') return;
+
+                game.elapsed += dt;
+                game.scrollSpeed = START_SPEED + Math.floor(game.elapsed / SPEED_INTERVAL) * SPEED_STEP;
+
+                game.scrollOffset += game.scrollSpeed * dt;
+                game.score += dt * 3;
+                game.message = '';
+                ensureBuffered();
+                maybeResolvePassiveNodes();
+                maybeTriggerDecision(timestamp);
+                expireDecisionWindow();
+                cleanupEffects(timestamp);
+                maybeEndOnDepletedStop();
+                syncHud();
+            }
+
+            function ensureBuffered() {
+                while (game.nextSegmentIndex < game.segments.length && game.scrollOffset > game.segments[game.nextSegmentIndex].endNt) {
+                    game.nextSegmentIndex += 1;
+                }
+                enqueueSegments(game, 4);
+                const oldestNt = game.scrollOffset - 200;
+                game.nodes = game.nodes.filter(node => node.ntPos > oldestNt || node.resolved);
+                game.edges = game.edges.filter(edge => edge.toNt > oldestNt);
+                game.bars = game.bars.filter(bar => bar.endNt > oldestNt);
+                while (game.codons.length && game.codons[0].nt < game.scrollOffset - 140) game.codons.shift();
+                const lastNt = game.codons.length ? game.codons[game.codons.length - 1].nt : game.scrollOffset;
+                for (let nt = lastNt + 3; nt < game.scrollOffset + 1200; nt += 3) {
+                    game.codons.push({ nt, codon: randomCodon(), optimality: Math.random() });
+                }
+            }
+
+            function maybeTriggerDecision(timestamp) {
+                const activeNt = getActiveNt();
+                const candidate = game.nodes
+                    .filter(node => !node.fired && node.optionA && node.ntPos <= activeNt)
+                    .sort((a, b) => a.ntPos - b.ntPos)[0];
+
+                if (!candidate) return;
+                candidate.fired = true;
+
+                if (!isNodeOnActivePath(candidate)) {
+                    candidate.resolved = true;
+                    game.message = `${candidate.label} passed on inactive path`;
+                    return;
+                }
+
+                game.decisionPending = candidate;
+                game.ribosomeState = candidate.type === 'aug_strong' || candidate.type === 'aug_nearcognate'
+                    ? 'recognising_48s'
+                    : candidate.type === 'readthrough'
+                        ? 'terminating'
+                        : game.ribosomeState;
+                syncButtons(candidate);
+            }
+
+            function expireDecisionWindow() {
+                const node = game.decisionPending;
+                if (!node) return;
+                if (getActiveNt() <= node.ntPos + DECISION_WINDOW_NT) return;
+                resolveDecision(node.defaultChoice, true);
+            }
+
+            function maybeResolvePassiveNodes() {
+                const activeNt = getActiveNt();
+                const boundary = game.nodes
+                    .filter(node => !node.fired && node.type === 'boundary' && node.ntPos <= activeNt)
+                    .sort((a, b) => a.ntPos - b.ntPos)[0];
+                if (boundary) {
+                    boundary.fired = true;
+                    boundary.resolved = true;
+                    if (game.currentOrfId === boundary.bypassOrf && game.ribosomeState === 'translating_80s') {
+                        game.score += 90 * comboMultiplier();
+                        game.flash = { text: 'Translated overlap bypassed structured block', color: COLORS.translon, until: performance.now() + 900 };
+                    } else if (game.ribosomeState === 'scanning_40s' || game.ribosomeState === 'recognising_48s') {
+                        gameOver('Scanning 40S hit a structured leader block');
+                    }
+                    return;
+                }
+
+                const stop = game.nodes
+                    .filter(node => !node.fired && node.type === 'stop' && node.ntPos <= activeNt)
+                    .sort((a, b) => a.ntPos - b.ntPos)[0];
+                if (stop) {
+                    stop.fired = true;
+                    resolveAutomaticStop(stop);
+                    return;
+                }
+
+                const pickup = game.nodes.find(node => !node.fired && node.type === 'tc_pickup' && node.ntPos <= activeNt);
+                if (!pickup) return;
+                pickup.fired = true;
+                pickup.resolved = true;
+                game.tcEif = clamp(game.tcEif + 1, 0, MAX_TC);
+                game.score += 60 * comboMultiplier();
+                game.flash = { text: '+1 TC/eIF picked up', color: COLORS.tc, until: performance.now() + 800 };
+            }
+
+            function resolveAutomaticStop(stop) {
+                if (!isNodeOnActivePath(stop)) {
+                    stop.resolved = true;
+                    return;
+                }
+
+                stop.resolved = true;
+                game.currentOrfId = null;
+
+                if (game.tcEif > 0) {
+                    game.tcEif -= 1;
+                    game.ribosomeState = 'reinitiating';
+                    game.currentFrame = 0;
+                    game.score += 45 * comboMultiplier();
+                    game.flash = { text: `${stop.label}: auto-reinitiation spent TC/eIF`, color: COLORS.tc, until: performance.now() + 900 };
+                    const reinitEdge = game.edges.find(edge => edge.id.includes(stop.segmentId) && edge.type === 'reinit');
+                    if (reinitEdge) reinitEdge.selectedAt = performance.now();
+                } else {
+                    gameOver(`${stop.label}: no TC/eIF for reinitiation`);
+                }
+                syncHud();
+            }
+
+            function isNodeOnActivePath(node) {
+                if (node.requiresState && game.ribosomeState !== node.requiresState) return false;
+                if (node.requiresOrf && game.currentOrfId !== node.requiresOrf) return false;
+                return true;
+            }
+
+            function resolveDecision(choice, timedOut = false) {
+                if (!game || !game.decisionPending) return;
+                const node = game.decisionPending;
+                const effect = node.effects[choice];
+                const correct = choice === node.correct && !timedOut;
+
+                node.resolved = true;
+                game.decisionPending = null;
+
+                if (effect) {
+                    game.ribosomeState = effect.state;
+                    game.currentFrame = effect.frame;
+                    if (typeof effect.orfId !== 'undefined') {
+                        game.currentOrfId = effect.orfId;
+                    } else if (effect.state === 'scanning_40s' || effect.state === 'reinitiating' || effect.state === 'terminating') {
+                        game.currentOrfId = null;
+                    }
+                    game.tcEif = clamp(game.tcEif + effect.tcDelta, 0, MAX_TC);
+                    game.score += timedOut ? 0 : effect.score * comboMultiplier();
+                    game.message = timedOut ? `Timeout: ${optionFor(node, choice).label}` : effect.message;
+                    game.flash = { text: game.message, color: correct ? COLORS.tc : COLORS.stop, until: performance.now() + 900 };
+                }
+
+                if (correct) {
+                    game.combo += 1;
+                } else {
+                    game.combo = 0;
+                }
+
+                const chosenEdge = game.edges.find(edge => edge.id.includes(node.segmentId) && edgeMatchesChoice(edge, node, choice));
+                if (chosenEdge) chosenEdge.selectedAt = performance.now();
+
+                if (game.tcEif <= 0 && game.ribosomeState === 'terminating') {
+                    gameOver('Terminated with no TC/eIF left');
+                }
+
+                syncHud();
+                syncButtons(null);
+            }
+
+            function edgeMatchesChoice(edge, node, choice) {
+                if (node.type === 'frameshift') return choice === 'A' ? edge.type === 'frameshift' : edge.type === 'scan';
+                if (node.type === 'readthrough') return choice === 'A' ? edge.type === 'readthrough' : false;
+                if (node.type === 'stop') return choice === 'A' ? edge.type === 'reinit' : false;
+                return choice === 'A' ? edge.type === 'branch' : edge.type === 'scan';
+            }
+
+            function optionFor(node, choice) {
+                return choice === 'A' ? node.optionA : node.optionB;
+            }
+
+            function maybeEndOnDepletedStop() {
+                if (game.tcEif > 0) return;
+                const activeNt = getActiveNt();
+                const stop = game.nodes.find(node =>
+                    !node.resolved &&
+                    (node.type === 'stop' || node.type === 'readthrough') &&
+                    node.ntPos < activeNt - 8
+                );
+                if (stop && game.ribosomeState !== 'readthrough' && game.ribosomeState !== 'frameshifted') {
+                    gameOver('Reached a stop with no reinitiation capacity');
+                }
+            }
+
+            function cleanupEffects(timestamp) {
+                game.resolvedEffects = game.resolvedEffects.filter(effect => effect.until > timestamp);
+                if (game.flash && game.flash.until < timestamp) game.flash = null;
+                if (game.ribosomeState === 'reinitiating' && !game.decisionPending) {
+                    const lastDecisionAgo = game.flash ? game.flash.until - timestamp : -1;
+                    if (lastDecisionAgo < 200) game.ribosomeState = 'scanning_40s';
+                }
+                if ((game.ribosomeState === 'readthrough' || game.ribosomeState === 'frameshifted') && game.flash === null) {
+                    game.ribosomeState = 'translating_80s';
+                }
+                if (game.ribosomeState === 'terminating' && game.flash === null && game.tcEif > 0) {
+                    game.ribosomeState = 'scanning_40s';
+                }
+            }
+
+            function gameOver(reason) {
+                game.phase = 'gameover';
+                game.ribosomeState = 'dead';
+                game.message = `${reason}. Press Space to restart.`;
+                game.flash = { text: game.message, color: COLORS.stop, until: performance.now() + 3000 };
+                syncHud();
+            }
+
+            function draw(timestamp) {
+                if (!game) return;
+                ctx.clearRect(0, 0, layout.width, layout.height);
+                drawBackground();
+                drawPanelDividers();
+                drawRDGPanel(timestamp);
+                drawRibosomePanel(timestamp);
+                drawHitLine();
+                drawDecisionOverlay(timestamp);
+                drawStartOrEndOverlay();
+                drawFlash();
+                drawDebug();
+            }
+
+            function drawBackground() {
+                ctx.fillStyle = COLORS.bg;
+                ctx.fillRect(0, 0, layout.width, layout.height);
+                ctx.fillStyle = 'rgba(255,255,255,0.035)';
+                for (let i = 0; i < 50; i++) {
+                    const x = (i * 167 - game.scrollOffset * 0.7) % (layout.width + 80);
+                    const y = 26 + (i * 83) % (layout.height - 52);
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+
+            function drawPanelDividers() {
+                ctx.fillStyle = 'rgba(16,24,39,0.55)';
+                ctx.fillRect(0, layout.rdgTop, layout.width, layout.rdgHeight);
+                ctx.fillRect(0, layout.ribTop, layout.width, layout.ribHeight);
+                ctx.strokeStyle = 'rgba(241,245,249,0.14)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, layout.ribTop);
+                ctx.lineTo(layout.width, layout.ribTop);
+                ctx.stroke();
+            }
+
+            function drawRDGPanel(timestamp) {
+                drawFrameRails();
+                game.edges.forEach(edge => drawEdge(edge, timestamp));
+                game.bars.forEach(drawTranslonBar);
+                game.nodes.forEach(node => drawNode(node, timestamp));
+                ctx.fillStyle = COLORS.dim;
+                ctx.font = '700 13px ui-monospace, monospace';
+                ctx.fillText('scrolling ribosome decision graph', 18, 28);
+            }
+
+            function drawFrameRails() {
+                ctx.font = '700 12px ui-monospace, monospace';
+                layout.railY.forEach((y, frame) => {
+                    ctx.strokeStyle = FRAME_COLORS[frame];
+                    ctx.globalAlpha = 0.7;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(layout.width, y);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = COLORS.dim;
+                    ctx.fillText(frame === 0 ? 'Frame 0' : `Frame +${frame}`, 18, y - 10);
+                });
+            }
+
+            function drawTranslonBar(bar) {
+                const x1 = ntToMapX(bar.startNt);
+                const x2 = ntToMapX(bar.endNt);
+                if (x2 < -80 || x1 > layout.width + 80) return;
+                const y = layout.railY[bar.frame] - 10;
+                ctx.fillStyle = bar.type === 'uorf' ? COLORS.uorf : COLORS.translon;
+                roundRect(x1, y, Math.max(8, x2 - x1), 20, 4);
+                ctx.fill();
+                ctx.fillStyle = '#07111f';
+                ctx.font = '800 11px ui-monospace, monospace';
+                if (x2 - x1 > 70) ctx.fillText(bar.label, x1 + 8, y + 14);
+            }
+
+            function drawEdge(edge, timestamp) {
+                const x1 = ntToMapX(edge.fromNt);
+                const x2 = ntToMapX(edge.toNt);
+                if (x2 < -100 || x1 > layout.width + 120) return;
+                const y1 = layout.railY[edge.fromFrame];
+                const y2 = layout.railY[edge.toFrame];
+                const selected = edge.selectedAt && performance.now() - edge.selectedAt < 800;
+                ctx.save();
+                ctx.strokeStyle = selected ? '#ffffff' : edgeColor(edge);
+                ctx.lineWidth = selected ? 5 : 3;
+                ctx.globalAlpha = selected ? 1 : 0.78;
+
+                if (edge.type === 'readthrough') {
+                    ctx.setLineDash([8, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                } else if (edge.type === 'frameshift') {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                } else if (edge.type === 'reinit') {
+                    ctx.setLineDash([7, 7]);
+                    ctx.beginPath();
+                    const cpX = (x1 + x2) / 2;
+                    ctx.moveTo(x1, y1);
+                    ctx.quadraticCurveTo(cpX, y1 + 70, x2, layout.railY[0]);
+                    ctx.stroke();
+                } else if (edge.type === 'branch') {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, layout.railY[0]);
+                    ctx.lineTo(x1, y1 - 48);
+                    ctx.lineTo(x2, y1 - 48);
+                    ctx.lineTo(x2, y1);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            function edgeColor(edge) {
+                if (edge.type === 'frameshift') return COLORS.frame1;
+                if (edge.type === 'readthrough') return COLORS.translon;
+                if (edge.type === 'reinit') return COLORS.tc;
+                return 'rgba(241,245,249,0.45)';
+            }
+
+            function drawNode(node, timestamp) {
+                const x = ntToMapX(node.ntPos);
+                if (x < -80 || x > layout.width + 80) return;
+                const y = layout.railY[node.frame || 0];
+                const active = game.decisionPending === node;
+                const pulse = active ? 1 + Math.sin(timestamp / 90) * 0.12 : 1;
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(pulse, pulse);
+                if (active) {
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 18;
+                }
+
+                if (node.type === 'aug_strong' || node.type === 'aug_nearcognate' || node.type === 'aug_marker') {
+                    drawDiamond(node.type === 'aug_strong' || node.type === 'aug_marker');
+                }
+                else if (node.type === 'stop' || node.type === 'readthrough' || node.type === 'stop_marker') drawStopCircle(node.type === 'readthrough');
+                else if (node.type === 'frameshift') drawFrameshiftGlyph(node);
+                else if (node.type === 'tc_pickup') drawStar();
+                else if (node.type === 'boundary') drawBoundaryGlyph();
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = COLORS.text;
+                ctx.font = '800 11px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, 0, -24);
+                ctx.restore();
+                ctx.textAlign = 'start';
+            }
+
+            function drawDiamond(filled) {
+                ctx.beginPath();
+                ctx.moveTo(0, -14);
+                ctx.lineTo(16, 0);
+                ctx.lineTo(0, 14);
+                ctx.lineTo(-16, 0);
+                ctx.closePath();
+                if (filled) {
+                    ctx.fillStyle = COLORS.frame0;
+                    ctx.fill();
+                } else {
+                    ctx.strokeStyle = COLORS.frame0;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            }
+
+            function drawStopCircle(readthrough) {
+                ctx.fillStyle = COLORS.stop;
+                ctx.beginPath();
+                ctx.arc(0, 0, 13, 0, Math.PI * 2);
+                ctx.fill();
+                if (readthrough) {
+                    ctx.strokeStyle = COLORS.tc;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 19, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            function drawFrameshiftGlyph(node) {
+                ctx.strokeStyle = COLORS.frame1;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-14, 13);
+                ctx.lineTo(14, -13);
+                ctx.stroke();
+                ctx.fillStyle = COLORS.frame1;
+                ctx.beginPath();
+                ctx.moveTo(14, -13);
+                ctx.lineTo(5, -10);
+                ctx.lineTo(12, -4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawStar() {
+                ctx.fillStyle = COLORS.tc;
+                ctx.beginPath();
+                for (let i = 0; i < 10; i++) {
+                    const r = i % 2 ? 8 : 17;
+                    const a = -Math.PI / 2 + i * Math.PI / 5;
+                    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawBoundaryGlyph() {
+                ctx.strokeStyle = COLORS.dim;
+                ctx.lineWidth = 3;
+                for (let i = -18; i <= 18; i += 12) {
+                    ctx.beginPath();
+                    ctx.arc(i, 0, 10, Math.PI, 0);
+                    ctx.stroke();
+                }
+                ctx.strokeStyle = COLORS.stop;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-26, 16);
+                ctx.lineTo(26, 16);
+                ctx.stroke();
+            }
+
+            function drawRibosomePanel(timestamp) {
+                const top = layout.ribTop;
+                const h = layout.ribHeight;
+                ctx.fillStyle = 'rgba(3,7,18,0.35)';
+                ctx.fillRect(0, top, layout.width, h);
+
+                ctx.fillStyle = COLORS.dim;
+                ctx.font = '700 13px ui-monospace, monospace';
+                ctx.fillText(`state: ${STATE_LABELS[game.ribosomeState]}`, 18, top + 28);
+
+                drawMRnaRibbon();
+                drawRibosomeGlyph(timestamp);
+            }
+
+            function drawMRnaRibbon() {
+                const y = layout.ribRibbonY;
+                ctx.fillStyle = 'rgba(34,197,94,0.16)';
+                roundRect(0, y - 18, layout.width, 36, 8);
+                ctx.fill();
+                ctx.strokeStyle = COLORS.translon;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(layout.width, y);
+                ctx.stroke();
+
+                ctx.font = '800 12px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                game.codons.forEach(codon => {
+                    const x = ntToPlayX(codon.nt);
+                    if (x < -30 || x > layout.width + 30) return;
+                    ctx.fillStyle = codon.optimality > 0.66 ? 'rgba(34,197,94,0.5)' : codon.optimality > 0.32 ? 'rgba(245,158,11,0.48)' : 'rgba(239,68,68,0.45)';
+                    ctx.fillRect(x - 13, y + 28, 26, 21);
+                    ctx.fillStyle = COLORS.text;
+                    ctx.fillText(codon.codon, x, y + 43);
+                });
+                ctx.textAlign = 'start';
+            }
+
+            function drawRibosomeGlyph(timestamp) {
+                const x = layout.hitLineX;
+                let y = layout.ribRibbonY - 62;
+                if (game.ribosomeState === 'frameshifted') y -= 34;
+                const pulse = Math.sin(timestamp / 140) * 0.08;
+
+                ctx.save();
+                ctx.translate(x, y);
+                if (game.ribosomeState === 'scanning_40s' || game.ribosomeState === 'ready') {
+                    drawScanning40S(timestamp);
+                } else if (game.ribosomeState === 'recognising_48s') {
+                    ctx.scale(1 + pulse, 1 + pulse);
+                    drawScanning40S(timestamp);
+                    ctx.strokeStyle = 'rgba(250,204,21,0.45)';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.ellipse(18, -6, 52, 34, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (game.ribosomeState === 'terminating') {
+                    drawTerminating80S(timestamp);
+                } else if (game.ribosomeState === 'reinitiating') {
+                    drawReinitiating(timestamp);
+                } else {
+                    drawFull80S(game.ribosomeState);
+                }
+                ctx.restore();
+            }
+
+            function drawScanning40S(timestamp) {
+                ctx.fillStyle = COLORS.ribosome;
+                ctx.beginPath();
+                ctx.moveTo(-44, 0);
+                ctx.lineTo(25, -28);
+                ctx.lineTo(38, 0);
+                ctx.lineTo(25, 28);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#07111f';
+                ctx.font = '900 17px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('40S', 5, 0);
+                ctx.strokeStyle = `rgba(0,212,255,${0.45 + Math.sin(timestamp / 100) * 0.25})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(38, 0);
+                ctx.lineTo(78, -14 + Math.sin(timestamp / 120) * 22);
+                ctx.stroke();
+                ctx.textAlign = 'start';
+            }
+
+            function drawFull80S(stateName) {
+                const glow = stateName === 'readthrough' ? COLORS.translon : stateName === 'frameshifted' ? COLORS.frame1 : COLORS.ribosome;
+                ctx.shadowColor = glow;
+                ctx.shadowBlur = stateName === 'readthrough' || stateName === 'frameshifted' ? 18 : 0;
+                ctx.fillStyle = COLORS.ribosome;
+                ctx.beginPath();
+                ctx.ellipse(-20, 4, 46, 34, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fde68a';
+                ctx.beginPath();
+                ctx.ellipse(28, -6, 54, 42, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#07111f';
+                ctx.font = '900 18px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('80S', 8, -2);
+                ctx.fillStyle = stateName === 'frameshifted' ? COLORS.frame1 : stateName === 'readthrough' ? COLORS.translon : COLORS.frame0;
+                ctx.fillRect(-8, 28, 34, 8);
+                ctx.textAlign = 'start';
+            }
+
+            function drawTerminating80S(timestamp) {
+                const gap = 10 + Math.sin(timestamp / 100) * 5;
+                ctx.fillStyle = COLORS.ribosome;
+                ctx.beginPath();
+                ctx.ellipse(-30 - gap, 4, 38, 30, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fde68a';
+                ctx.beginPath();
+                ctx.ellipse(30 + gap, -4, 42, 34, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = COLORS.stop;
+                ctx.font = '900 13px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('RF', 0, -44);
+                ctx.textAlign = 'start';
+            }
+
+            function drawReinitiating(timestamp) {
+                const drift = Math.sin(timestamp / 130) * 4;
+                ctx.fillStyle = 'rgba(253,230,138,0.35)';
+                ctx.beginPath();
+                ctx.ellipse(38, -24 - drift, 46, 28, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = COLORS.ribosome;
+                ctx.beginPath();
+                ctx.ellipse(-12, 5, 48, 30, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#07111f';
+                ctx.font = '900 17px ui-monospace, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('40S', -12, 9);
+                ctx.textAlign = 'start';
+            }
+
+            function drawHitLine() {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(241,245,249,0.82)';
+                ctx.setLineDash([8, 9]);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(layout.hitLineX, 0);
+                ctx.lineTo(layout.hitLineX, layout.height);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(241,245,249,0.8)';
+                ctx.font = '800 11px ui-monospace, monospace';
+                ctx.fillText('decision line', layout.hitLineX + 9, 18);
+                ctx.restore();
+            }
+
+            function drawDecisionOverlay(timestamp) {
+                if (!game.decisionPending) return;
+                const node = game.decisionPending;
+                const remaining = clamp((node.ntPos + DECISION_WINDOW_NT - getActiveNt()) / DECISION_WINDOW_NT, 0, 1);
+                const w = Math.min(460, layout.width - 40);
+                const h = 168;
+                const x = (layout.width - w) / 2;
+                const y = layout.ribTop + 34;
+                ctx.fillStyle = 'rgba(7,11,21,0.9)';
+                roundRect(x, y, w, h, 10);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(241,245,249,0.2)';
+                ctx.stroke();
+                ctx.fillStyle = COLORS.text;
+                ctx.font = '900 18px ui-monospace, monospace';
+                ctx.fillText(node.label, x + 24, y + 35);
+                ctx.font = '800 16px ui-monospace, monospace';
+                ctx.fillStyle = COLORS.frame0;
+                ctx.fillText(`↑ W  ${node.optionA.label}`, x + 24, y + 75);
+                ctx.fillStyle = COLORS.translon;
+                ctx.fillText(`↓ S  ${node.optionB.label}`, x + 24, y + 108);
+                ctx.fillStyle = COLORS.dim;
+                ctx.font = '700 12px ui-monospace, monospace';
+                ctx.fillText('press during the hit window; otherwise the branch is missed', x + 24, y + 126);
+                ctx.fillStyle = 'rgba(241,245,249,0.16)';
+                roundRect(x + 24, y + 140, w - 48, 14, 7);
+                ctx.fill();
+                ctx.fillStyle = remaining < 0.25 ? COLORS.stop : COLORS.tc;
+                roundRect(x + 24, y + 140, (w - 48) * remaining, 14, 7);
+                ctx.fill();
+            }
+
+            function drawStartOrEndOverlay() {
+                if (game.phase !== 'ready' && game.phase !== 'gameover') return;
+                ctx.fillStyle = 'rgba(7,11,21,0.74)';
+                ctx.fillRect(0, 0, layout.width, layout.height);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = COLORS.text;
+                ctx.font = '900 42px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+                ctx.fillText(game.phase === 'gameover' ? 'Translation Failed' : 'Ribosome Decision Dash', layout.width / 2, layout.height / 2 - 42);
+                ctx.fillStyle = COLORS.dim;
+                ctx.font = '700 18px ui-monospace, monospace';
+                ctx.fillText(game.message, layout.width / 2, layout.height / 2 + 2);
+                ctx.fillStyle = COLORS.tc;
+                ctx.fillText('Space/click to start · W/↑ special branch · S/↓ default path', layout.width / 2, layout.height / 2 + 42);
+                ctx.textAlign = 'start';
+            }
+
+            function drawFlash() {
+                if (!game.flash) return;
+                ctx.save();
+                ctx.font = '900 16px ui-monospace, monospace';
+                const w = ctx.measureText(game.flash.text).width + 34;
+                ctx.fillStyle = 'rgba(7,11,21,0.82)';
+                roundRect(18, layout.ribTop + 46, Math.min(w, layout.width - 36), 44, 8);
+                ctx.fill();
+                ctx.fillStyle = game.flash.color;
+                ctx.fillText(game.flash.text, 34, layout.ribTop + 74);
+                ctx.restore();
+            }
+
+            function drawDebug() {
+                if (!game.debug) return;
+                const lines = [
+                    `scrollOffset ${game.scrollOffset.toFixed(2)}`,
+                    `scrollSpeed ${game.scrollSpeed.toFixed(1)} nt/s`,
+                    `activeNt ${getActiveNt().toFixed(2)}`,
+                    `state ${game.ribosomeState}`,
+                    `tcEif ${game.tcEif}`,
+                    `decision ${game.decisionPending ? game.decisionPending.id : 'none'}`
+                ];
+                ctx.fillStyle = 'rgba(0,0,0,0.62)';
+                roundRect(14, 36, 260, 124, 8);
+                ctx.fill();
+                ctx.fillStyle = COLORS.tc;
+                ctx.font = '700 12px ui-monospace, monospace';
+                lines.forEach((line, i) => ctx.fillText(line, 28, 58 + i * 17));
+            }
+
+            function loop(timestamp) {
+                const dt = Math.min(0.05, (timestamp - lastTs) / 1000 || 0);
+                lastTs = timestamp;
+                update(dt, timestamp);
+                draw(timestamp);
+                rafId = requestAnimationFrame(loop);
+            }
+
+            function syncHud() {
+                pipsEl.innerHTML = '';
+                for (let i = 0; i < MAX_TC; i++) {
+                    const pip = document.createElement('span');
+                    pip.className = `pip${i < game.tcEif ? ' filled' : ''}`;
+                    pipsEl.appendChild(pip);
+                }
+                scoreEl.textContent = `${Math.floor(game.score)} x${comboMultiplier().toFixed(1)}`;
+                distanceEl.textContent = `${Math.max(0, Math.floor(game.scrollOffset))} nt`;
+                ribosomeStateEl.textContent = STATE_LABELS[game.ribosomeState] || game.ribosomeState;
+            }
+
+            function syncButtons(node) {
+                optionAButton.textContent = node ? `↑ W ${node.optionA.label}` : '↑ W Special branch';
+                optionBButton.textContent = node ? `↓ S ${node.optionB.label}` : '↓ S Default path';
+            }
+
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                const ratio = window.devicePixelRatio || 1;
+                canvas.width = Math.round(rect.width * ratio);
+                canvas.height = Math.round(rect.height * ratio);
+                ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                layout.width = rect.width;
+                layout.height = rect.height;
+                layout.rdgTop = 0;
+                layout.rdgHeight = rect.height * 0.35;
+                layout.ribTop = layout.rdgHeight;
+                layout.ribHeight = rect.height * 0.65;
+                layout.hitLineX = rect.width * 0.25;
+                layout.railY = [
+                    layout.rdgTop + layout.rdgHeight * 0.28,
+                    layout.rdgTop + layout.rdgHeight * 0.52,
+                    layout.rdgTop + layout.rdgHeight * 0.76
+                ];
+                layout.ribRibbonY = layout.ribTop + layout.ribHeight * 0.58;
+            }
+
+            function getActiveNt() {
+                return game.scrollOffset + getHitLineNtOffset();
+            }
+
+            function getHitLineNtOffset() {
+                return layout.hitLineX / PLAY_NTPERPIXEL;
+            }
+
+            function ntToMapX(nt) {
+                return layout.hitLineX + (nt - getActiveNt()) * MAP_NTPERPIXEL;
+            }
+
+            function ntToPlayX(nt) {
+                return layout.hitLineX + (nt - getActiveNt()) * PLAY_NTPERPIXEL;
+            }
+
+            function comboMultiplier() {
+                return Math.min(3, 1 + game.combo * 0.1);
+            }
+
+            function clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+
+            function roundRect(x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            }
+
+            function handleChoice(choice) {
+                if (!game) return;
+                if (game.phase === 'ready' || game.phase === 'gameover') {
+                    restartGame();
+                    return;
+                }
+                if (game.decisionPending) {
+                    resolveDecision(choice, false);
+                }
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                draw(performance.now());
+            });
+
+            window.addEventListener('keydown', event => {
+                if (event.code === 'Space') {
+                    event.preventDefault();
+                    if (game.phase === 'ready' || game.phase === 'gameover') restartGame();
+                } else if (event.key === '`') {
+                    game.debug = !game.debug;
+                } else if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+                    event.preventDefault();
+                    handleChoice('A');
+                } else if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+                    event.preventDefault();
+                    handleChoice('B');
+                }
+            });
+
+            canvas.addEventListener('click', () => {
+                if (game.phase === 'ready' || game.phase === 'gameover') restartGame();
+            });
+            optionAButton.addEventListener('click', () => handleChoice('A'));
+            optionBButton.addEventListener('click', () => handleChoice('B'));
+
+            game = initialGame();
+            resizeCanvas();
+            syncHud();
+            syncButtons(null);
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(loop);
+        })();
+    </script>
+</body>
+</html>
