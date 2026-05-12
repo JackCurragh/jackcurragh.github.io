@@ -182,7 +182,7 @@
             display: grid;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             gap: 0.5rem;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             line-height: 1.45;
             margin-top: 0.85rem;
         }
@@ -256,15 +256,16 @@
             </section>
             <canvas id="game" width="1200" height="720"></canvas>
             <section class="controls">
-                <button id="option-a" type="button">Space Event</button>
-                <button id="option-b" type="button">↓ S Skip</button>
+                <button id="option-a" type="button">↑: leaky scan / frame up</button>
+                <button id="option-b" type="button">↓: initiate / frame down</button>
             </section>
         </main>
 
         <section class="notes">
-            <p class="note"><strong>Leader:</strong> starts can appear in any frame. Some short ORFs are costly; some help the 40S through difficult leader context.</p>
-            <p class="note"><strong>CDS:</strong> stay translating, manage spacing, and use valid recoding choices to avoid premature stops.</p>
-            <p class="note"><strong>Loop:</strong> a terminal stop is success. The 80S dissociates, 40S recycles, and the next leader gets harder.</p>
+            <p class="note"><strong>Goal:</strong> finish as many translation cycles as possible: reach the CDS, survive elongation, hit the terminal stop, recycle the 40S.</p>
+            <p class="note"><strong>Leader controls:</strong> ↑ leaky-scans past a start. ↓, or doing nothing, lets the 40S initiate that ORF.</p>
+            <p class="note"><strong>CDS controls:</strong> ↑ and ↓ move between reading frames. ↑ at a stop attempts readthrough/decoding.</p>
+            <p class="note"><strong>Pressure:</strong> TC/eIF pips are reinitiation capacity. The leader timer and ribosome spacing are the clocks you are fighting.</p>
         </section>
     </div>
 
@@ -376,12 +377,13 @@
                     plannedCdsLen: 0,
                     recycledUntil: 0,
                     flash: null,
-                    message: showTutorial ? 'Tutorial: translation is a route-choice and traffic-control problem.' : 'Press Space or tap the canvas to start',
+                    message: showTutorial ? 'Tutorial: translation is a route-choice and traffic-control problem.' : 'Press any arrow or tap the canvas to start',
                     causeOfFailure: '',
                     cyclesCompleted: 0,
                     bestPhase: 'leader',
                     tutorialMode: showTutorial,
                     tutorialIntro: showTutorial,
+                    tutorialPause: false,
                     tutorialStep: 0,
                     debug: false
                 };
@@ -803,6 +805,11 @@
                 }
 
                 updateTutorialStep();
+                if (game.tutorialPause) {
+                    syncHud();
+                    syncButtons(null);
+                    return;
+                }
                 game.scrollSpeed = targetScrollSpeed();
                 drainLeaderFactors(dt, timestamp);
                 if (game.phase === 'gameover') return;
@@ -825,18 +832,23 @@
             function updateTutorialStep() {
                 if (!game.tutorialMode) return;
                 const activeNt = getActiveNt();
+                let nextStep = game.tutorialStep;
                 if (game.cyclePhase === 'leader') {
-                    if (activeNt < game.phaseStartNt + 430) game.tutorialStep = 0;
-                    else if (activeNt < game.phaseStartNt + 900) game.tutorialStep = 1;
-                    else game.tutorialStep = 2;
+                    if (activeNt < game.phaseStartNt + 430) nextStep = 0;
+                    else if (activeNt < game.phaseStartNt + 900) nextStep = 1;
+                    else nextStep = 2;
                 } else if (game.cyclePhase === 'cds') {
                     const d = game.cdsDistance;
-                    if (d < 650) game.tutorialStep = 3;
-                    else if (d < 1120) game.tutorialStep = 4;
-                    else if (d < 1720) game.tutorialStep = 5;
-                    else game.tutorialStep = 6;
+                    if (d < 650) nextStep = 3;
+                    else if (d < 1120) nextStep = 4;
+                    else if (d < 1720) nextStep = 5;
+                    else nextStep = 6;
                 } else {
-                    game.tutorialStep = 7;
+                    nextStep = 7;
+                }
+                if (nextStep !== game.tutorialStep) {
+                    game.tutorialStep = nextStep;
+                    game.tutorialPause = true;
                 }
             }
 
@@ -957,15 +969,17 @@
                 } else if (passive.type === 'premature_stop') {
                     if (isNodeOnActivePath(passive)) gameOver('Premature stop terminated the CDS');
                 } else if (passive.type === 'slow_zone') {
-                    game.speedModifier = 0.62;
-                    game.ribosomeState = 'stalled';
-                    game.flash = { text: 'Slow codons: trailing ribosome is catching up', color: COLORS.uorf, until: timestamp + 1300 };
-                    setTimeout(() => {
-                        if (game && game.phase === 'running') {
-                            game.speedModifier = 1;
-                            if (game.ribosomeState === 'stalled') game.ribosomeState = 'translating_80s';
-                        }
-                    }, 1200);
+                    if (isSlowZoneActive(passive)) {
+                        game.speedModifier = 0.62;
+                        game.ribosomeState = 'stalled';
+                        game.flash = { text: 'Slow codons in this frame: trailing ribosome is catching up', color: COLORS.uorf, until: timestamp + 1300 };
+                        setTimeout(() => {
+                            if (game && game.phase === 'running') {
+                                game.speedModifier = 1;
+                                if (game.ribosomeState === 'stalled') game.ribosomeState = 'translating_80s';
+                            }
+                        }, 1200);
+                    }
                 } else if (passive.type === 'terminal_stop') {
                     if (game.cyclePhase === 'cds') startRecycling(timestamp);
                 } else if (passive.type === 'tc_pickup') {
@@ -979,6 +993,14 @@
                         buildCdsPhase(game, passive.ntPos);
                     }
                 }
+            }
+
+            function isSlowZoneActive(node) {
+                return game.cyclePhase === 'cds' &&
+                    game.ribosomeState !== 'scanning_40s' &&
+                    game.ribosomeState !== 'recognising_48s' &&
+                    game.currentOrfId &&
+                    game.currentFrame === node.frame;
             }
 
             function resolveAutomaticStop(stop, timestamp) {
@@ -1105,7 +1127,7 @@
                 game.phase = 'gameover';
                 game.ribosomeState = 'dead';
                 game.causeOfFailure = reason;
-                game.message = `${reason}. Press Space to restart.`;
+                game.message = `${reason}. Press any arrow to restart.`;
                 game.flash = { text: game.message, color: COLORS.stop, until: performance.now() + 3000 };
                 syncHud();
             }
@@ -1631,12 +1653,12 @@
                 ctx.fillText(node.label, x + 24, y + 35);
                 ctx.font = '800 16px ui-monospace, monospace';
                 ctx.fillStyle = COLORS.frame0;
-                ctx.fillText(`Space  ${node.optionA.label}`, x + 24, y + 75);
+                ctx.fillText(`↑  ${node.optionA.label}`, x + 24, y + 75);
                 ctx.fillStyle = COLORS.translon;
-                ctx.fillText(`↓ S  ${node.optionB.label}`, x + 24, y + 108);
+                ctx.fillText(`↓  ${node.optionB.label}`, x + 24, y + 108);
                 ctx.fillStyle = COLORS.dim;
                 ctx.font = '700 12px ui-monospace, monospace';
-                ctx.fillText('press during the hit window; otherwise the branch is missed', x + 24, y + 126);
+                ctx.fillText(decisionRuleText(node), x + 24, y + 126);
                 if (tutorialHint) {
                     ctx.fillStyle = tutorialHint.color;
                     ctx.font = '900 13px ui-monospace, monospace';
@@ -1658,33 +1680,43 @@
                 if (!game.tutorialMode) return null;
                 if (node.id.includes('tutorial_stall')) {
                     return {
-                        action: 'SPACE TO LEAKY SCAN',
+                        action: '↑ TO LEAKY SCAN',
                         reason: 'Avoid this stalling uORF; initiating burns reinitiation capacity.',
                         color: COLORS.frame0
                     };
                 }
                 if (node.id.includes('tutorial_short')) {
                     return {
-                        action: 'S / ↓ OR WAIT TO INITIATE',
+                        action: '↓ OR WAIT TO INITIATE',
                         reason: 'This short uORF carries the ribosome through the leader with factors retained.',
                         color: COLORS.translon
                     };
                 }
                 if (node.id.includes('tutorial_cds_start')) {
                     return {
-                        action: 'S / ↓ OR WAIT TO START THE CDS',
+                        action: '↓ OR WAIT TO START THE CDS',
                         reason: 'This is the productive start. Enter elongation with TC/eIF remaining.',
                         color: COLORS.tc
                     };
                 }
                 if (node.type === 'readthrough' || node.type === 'secis') {
                     return {
-                        action: 'SPACE TO READ THROUGH',
+                        action: '↑ TO READ THROUGH',
                         reason: 'A translating ribosome can suppress release at this stop window.',
                         color: COLORS.frame0
                     };
                 }
                 return null;
+            }
+
+            function decisionRuleText(node) {
+                if (node.type === 'aug_strong' || node.type === 'aug_nearcognate') {
+                    return 'Leader start: ↑ avoids; ↓ or waiting initiates.';
+                }
+                if (node.type === 'readthrough' || node.type === 'secis') {
+                    return 'CDS stop: ↑ continues translation; ↓ releases.';
+                }
+                return 'press during the hit window; otherwise the default path happens';
             }
 
             function drawTutorialOverlay() {
@@ -1694,13 +1726,13 @@
                     return;
                 }
                 const steps = [
-                    ['1. Leaky scanning', 'A polybasic uORF is coming. Press Space in the decision window to leaky scan past it; if you miss, the 40S initiates and factors are lost.', 'SPACE TO LEAKY SCAN', COLORS.frame0],
-                    ['2. Useful short uORF', 'This time, do not leaky scan. Let the short ORF initiate with S/↓ or by waiting. It crosses the leader obstacle while retaining reinitiation capacity.', 'S / ↓ OR WAIT TO INITIATE', COLORS.translon],
-                    ['3. CDS entry', 'Reach the CDS AUG with enough TC/eIF. Hold Shift to fast-forward through open leader, but release it near decisions.', 'S / ↓ OR WAIT AT THE CDS AUG', COLORS.tc],
+                    ['1. Leaky scanning', 'A polybasic uORF is coming. Press ↑ in the decision window to leaky scan past it; if you miss, the 40S initiates and factors are lost.', '↑ TO LEAKY SCAN', COLORS.frame0],
+                    ['2. Useful short uORF', 'This time, do not leaky scan. Let the short ORF initiate with ↓ or by waiting. It crosses the leader obstacle while retaining reinitiation capacity.', '↓ OR WAIT TO INITIATE', COLORS.translon],
+                    ['3. CDS entry', 'Reach the CDS AUG with enough TC/eIF. Hold Shift to fast-forward through open leader, but release it near decisions.', '↓ OR WAIT AT THE CDS AUG', COLORS.tc],
                     ['4. Traffic', 'CDS elongation begins. Slow codons compress the rear gap; hold Shift briefly if the rear ribosome closes in.', 'SHIFT TO SPEED UP BRIEFLY', COLORS.uorf],
-                    ['5. Frame movement', 'Stops are terrain in each frame. Use W/↑ and S/↓ to hop frames before the current rail runs into a stop.', 'W / ↑ AND S / ↓ CHANGE FRAME', COLORS.frame1],
-                    ['6. Readthrough', 'If you do hit a stop, Space can suppress release and keep translation moving. Use it sparingly.', 'SPACE AT A STOP WINDOW', COLORS.frame0],
-                    ['7. UGA context', 'UGA can sometimes be decoded instead of released. Space handles readthrough/decoding at any stop window.', 'SPACE TO DECODE / READ THROUGH', COLORS.tc],
+                    ['5. Frame movement', 'Stops are terrain in each frame. Use ↑ and ↓ to hop frames before the current rail runs into a stop.', '↑ AND ↓ CHANGE FRAME', COLORS.frame1],
+                    ['6. Readthrough', 'If you do hit a stop, ↑ can suppress release and keep translation moving. Use it sparingly.', '↑ AT A STOP WINDOW', COLORS.frame0],
+                    ['7. UGA context', 'UGA can sometimes be decoded instead of released. ↑ handles readthrough/decoding at any stop window.', '↑ TO DECODE / READ THROUGH', COLORS.tc],
                     ['8. Recycling', 'The terminal stop is success. The 80S dissociates, the 40S recycles, and the real run begins.', 'TERMINAL STOP COMPLETES THE LAP', COLORS.translon]
                 ];
                 const [title, body, action, color] = steps[game.tutorialStep] || steps[0];
@@ -1724,8 +1756,13 @@
                 wrapText(body, x + 18, y + 86, w - 36, 21, 'left');
                 ctx.fillStyle = COLORS.tc;
                 ctx.font = '800 12px ui-monospace, monospace';
-                ctx.fillText(`tutorial ${game.tutorialStep + 1}/${steps.length} · Esc skips`, x + 18, y + 164);
+                ctx.fillText(tutorialFooterText(steps.length), x + 18, y + 164);
                 ctx.textAlign = 'start';
+            }
+
+            function tutorialFooterText(totalSteps) {
+                if (game.tutorialPause) return `tutorial ${game.tutorialStep + 1}/${totalSteps} · press any arrow to try this · Esc skips`;
+                return `tutorial ${game.tutorialStep + 1}/${totalSteps} · Esc skips`;
             }
 
             function drawTutorialIntro() {
@@ -1745,11 +1782,11 @@
                 ctx.fillText('Ribosome Decision Dash', layout.width / 2, y + 54);
                 ctx.fillStyle = COLORS.dim;
                 ctx.font = '700 16px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
-                wrapText('You are guiding ribosomes through a synthetic transcript. First the 40S scans the leader while initiation competence drains. Then the 80S translates the CDS by hopping between reading frames to avoid stop codon clusters.', layout.width / 2, y + 92, w - 92, 24, 'center');
+                wrapText('Goal: complete repeated translation cycles. Get the 40S through the leader, start the CDS, keep the 80S translating through stop-dense frames, then recycle at the terminal stop.', layout.width / 2, y + 92, w - 92, 24, 'center');
                 const rows = [
-                    ['Leader', 'Space leaky-scans past bad starts. Let selected short ORFs initiate when they save time or factors.'],
-                    ['CDS', 'W/S move between frames. Space suppresses a stop if you hit one. Shift fast-forwards, but traffic gets risky.'],
-                    ['Goal', 'Reach the terminal stop, recycle the 40S, then survive a harder transcript.']
+                    ['Leader', '↑ avoids a start. ↓ or waiting initiates. Pick starts that save factors or time.'],
+                    ['CDS', '↑ and ↓ move between frames. ↑ at a stop attempts readthrough/decoding.'],
+                    ['Pressure', 'Shift fast-forwards. TC/eIF, leader time, and ribosome spacing decide survival.']
                 ];
                 ctx.textAlign = 'left';
                 rows.forEach((row, i) => {
@@ -1764,7 +1801,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillStyle = COLORS.tc;
                 ctx.font = '900 15px ui-monospace, monospace';
-                ctx.fillText('Space/click to start tutorial · Esc to skip', layout.width / 2, y + 326);
+                ctx.fillText('Click to start tutorial · Esc to skip', layout.width / 2, y + 326);
                 ctx.textAlign = 'start';
             }
 
@@ -1785,8 +1822,16 @@
                     ctx.fillText(`cycles: ${game.cyclesCompleted} · score: ${Math.floor(game.score)} · best phase: ${game.bestPhase}`, layout.width / 2, layout.height / 2 + 22);
                 }
                 ctx.fillStyle = COLORS.tc;
-                ctx.font = '800 16px ui-monospace, monospace';
-                ctx.fillText('Space/click to start · Space acts/avoids · hold Shift to fast-forward', layout.width / 2, layout.height / 2 + 64);
+                ctx.font = '900 18px ui-monospace, monospace';
+                if (game.phase === 'ready') {
+                    ctx.fillText('ARROW CONTROLS', layout.width / 2, layout.height / 2 + 40);
+                    wrapText('Leader: ↑ leaky scan / avoid start · ↓ initiate start', layout.width / 2, layout.height / 2 + 70, layout.width - 64, 24, 'center');
+                    wrapText('CDS: ↑ frame up / readthrough stop · ↓ frame down / release stop', layout.width / 2, layout.height / 2 + 100, layout.width - 64, 24, 'center');
+                    ctx.fillText('Click or press any arrow to start', layout.width / 2, layout.height / 2 + 136);
+                } else {
+                    ctx.font = '800 16px ui-monospace, monospace';
+                    wrapText('Click or press any arrow to restart · Tutorial button replays the controls', layout.width / 2, layout.height / 2 + 64, layout.width - 64, 22, 'center');
+                }
                 ctx.textAlign = 'start';
             }
 
@@ -1846,8 +1891,28 @@
             }
 
             function syncButtons(node) {
-                optionAButton.textContent = node ? `Space ${node.optionA.label}` : 'Space Event';
-                optionBButton.textContent = node ? `↓ S ${node.optionB.label}` : '↓ S Skip';
+                if (node) {
+                    optionAButton.textContent = `↑: ${node.optionA.label}`;
+                    optionBButton.textContent = `↓: ${node.optionB.label}`;
+                    return;
+                }
+                if (!game || game.phase === 'ready' || game.phase === 'gameover') {
+                    optionAButton.textContent = '↑: start / restart';
+                    optionBButton.textContent = '↓: start / restart';
+                    return;
+                }
+                if (game.tutorialIntro || game.tutorialPause) {
+                    optionAButton.textContent = '↑: continue tutorial';
+                    optionBButton.textContent = '↓: continue tutorial';
+                    return;
+                }
+                if (game.cyclePhase === 'cds') {
+                    optionAButton.textContent = '↑: frame up / readthrough at stops';
+                    optionBButton.textContent = '↓: frame down / release at stops';
+                    return;
+                }
+                optionAButton.textContent = '↑: leaky scan / avoid start';
+                optionBButton.textContent = '↓: initiate start / accept default';
             }
 
             function phaseLabel() {
@@ -1937,15 +2002,28 @@
                     startGame({ tutorial: false });
                     return;
                 }
-                if (game.tutorialIntro) {
-                    game.tutorialIntro = false;
-                    return;
-                }
+                if (advanceTutorialPause()) return;
                 if (game.decisionPending) resolveDecision(choice, false);
             }
 
+            function advanceTutorialPause() {
+                if (!game.tutorialMode) return false;
+                if (game.tutorialIntro) {
+                    game.tutorialIntro = false;
+                    game.tutorialPause = true;
+                    syncButtons(null);
+                    return true;
+                }
+                if (game.tutorialPause) {
+                    game.tutorialPause = false;
+                    syncButtons(null);
+                    return true;
+                }
+                return false;
+            }
+
             function nudgeCdsFrame(delta) {
-                if (game.phase !== 'running' || game.decisionPending || game.cyclePhase !== 'cds') return false;
+                if (game.phase !== 'running' || game.decisionPending || game.tutorialIntro || game.tutorialPause || game.cyclePhase !== 'cds') return false;
                 game.currentFrame = clamp(game.currentFrame + delta, 0, 2);
                 game.ribosomeState = 'frameshifted';
                 game.flash = { text: `Frame ${game.currentFrame === 0 ? '0' : `+${game.currentFrame}`}`, color: FRAME_COLORS[game.currentFrame], until: performance.now() + 420 };
@@ -1989,11 +2067,15 @@
 
             canvas.addEventListener('click', () => {
                 if (game.phase === 'ready' || game.phase === 'gameover') startGame({ tutorial: false });
-                else if (game.tutorialIntro) game.tutorialIntro = false;
+                else if (advanceTutorialPause()) return;
                 else if (game.decisionPending) handleChoice('A');
             });
-            optionAButton.addEventListener('click', () => handleChoice('A'));
-            optionBButton.addEventListener('click', () => handleChoice('B'));
+            optionAButton.addEventListener('click', () => {
+                if (!nudgeCdsFrame(-1)) handleChoice('A');
+            });
+            optionBButton.addEventListener('click', () => {
+                if (!nudgeCdsFrame(1)) handleChoice('B');
+            });
             tutorialButton.addEventListener('click', () => startGame({ tutorial: true }));
 
             game = initialGame();
