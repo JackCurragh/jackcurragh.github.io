@@ -1,49 +1,37 @@
-# CitationLinker
+# Jack Tierney - Personal Website
 
-CitationLinker is a fully client-side web app for converting Paperpile-generated external DOCX citation links into internal DOCX navigation links.
+This repository contains Jack Tierney's personal website and a collection of standalone browser apps for research and translation analysis.
 
-## What it does
+## Site Structure
 
-- Accepts a Paperpile DOCX by drag-and-drop or file picker.
-- Detects Paperpile citation and bibliography hyperlinks in the DOCX XML locally in the browser.
-- Maps Paperpile `/c/<doc>/<ids>` citations to matching `/b/<doc>/<id>` bibliography entries.
-- Rewrites bibliography hyperlinks as DOCX bookmarks and citation hyperlinks as internal DOCX anchors.
-- Preserves unrelated document content and hyperlinks.
-- Downloads a modified DOCX without uploading the manuscript anywhere.
+```text
+├── index.html              # Home page
+├── research.html           # Research and projects
+├── publications.html       # Publications
+├── tools.html              # Tools
+├── apps/                   # Interactive apps and visualizations
+│   ├── index.html          # App gallery
+│   └── citation-linker/    # Vite-built Paperpile DOCX linker
+└── assets/                 # Shared site assets
+```
 
-Semicolon-separated multi-reference citation hyperlinks are split into separate DOCX hyperlink runs when the text and Paperpile ID counts agree. Other multi-reference groups are reported for review rather than guessed.
+## CitationLinker
 
-## Privacy
-
-All processing happens in the browser. No manuscript content is uploaded or transmitted.
-
-## Development
+CitationLinker is a fully client-side app at `apps/citation-linker/`. It converts Paperpile-generated external DOCX citation links into internal DOCX navigation links without uploading the manuscript.
 
 ```bash
 npm install
-npm run dev
-```
-
-## GitHub Pages
-
-This repo is deployed as a static site. GitHub Pages should publish the `dist/` output produced by `npm run build`.
-
-The source `index.html` is a Vite entry point, so opening it directly via `file://` will fail. Use `npm run dev` locally, or view the deployed GitHub Pages site.
-
-## Build
-
-```bash
+npm test
 npm run build
 ```
 
-## Tests
+The Vite build writes the app to `dist/apps/citation-linker/`. The GitHub Pages workflow assembles the existing static website alongside it.
 
-```bash
-npm test
-```
+## GitHub Pages
 
-## Notes
+Set **Pages -> Build and deployment -> Source** to **GitHub Actions**. The deployment workflow publishes the existing website at `/` and the apps gallery at `/apps/`.
 
-- Multi-reference citation clusters are handled conservatively.
-- Ambiguous clusters are reported rather than guessed.
-- The app is designed for GitHub Pages deployment as a static site.
+## License
+
+Content: Copyright 2024 Jack Tierney
+Code: MIT License (see LICENSE file)

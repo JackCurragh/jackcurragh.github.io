@@ -3,7 +3,7 @@
  *
  * Minimal helpers to fetch a gene with all transcripts/exons and the
  * genomic sequence covering the locus. Designed to be used from static
- * demos; no build step required.
+ * apps; no build step required.
  */
 
 (function(global){
