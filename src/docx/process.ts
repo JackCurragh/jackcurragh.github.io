@@ -9,6 +9,8 @@ const PACKAGE_REL_NS = "http://schemas.openxmlformats.org/package/2006/relations
 const ZERO_RECT: PdfRect = { x1: 0, y1: 0, x2: 0, y2: 0 };
 
 type Relationship = { id: string; target: string };
+type ParsedLink = { element: Element; url: string; parsed: NonNullable<ReturnType<typeof parsePaperpileUrl>> };
+type CitationLinkGroup = ParsedLink & { elements: Element[] };
 
 export interface DocxProcessResult {
   report: ProcessingReport;
@@ -33,6 +35,7 @@ export async function processDocx(file: File, progress: (message: string) => voi
 
   const bibliography = citations.filter((item) => item.parsed.kind === "bibliography");
   const citationLinks = citations.filter((item) => item.parsed.kind === "citation");
+  const citationGroups = groupAdjacentCitationLinks(citationLinks);
   const bibliographyIds = new Set(bibliography.map((item) => item.parsed.referenceIds[0]));
   const documentId = citations[0]?.parsed.documentId;
   const problems: CitationProblem[] = [];
@@ -54,33 +57,35 @@ export async function processDocx(file: File, progress: (message: string) => voi
   }
 
   progress("Resolving Paperpile citation links…");
-  for (const item of citationLinks) {
-    const referenceIds = item.parsed.referenceIds;
+  for (const group of citationGroups) {
+    const referenceIds = group.parsed.referenceIds;
     const missing = referenceIds.filter((referenceId) => !bibliographyIds.has(referenceId));
-    const text = normalizeCitationText(item.element.textContent ?? "");
+    const text = normalizeCitationText(group.elements.map((element) => element.textContent ?? "").join(""));
     const fragments = splitCitationText(text);
-    const problemKey = `docx::${item.url}`;
+    const problemKey = `docx::${group.url}`;
 
     if (missing.length > 0) {
-      problems.push(makeProblem(problemKey, documentId ?? item.parsed.documentId, referenceIds, item.url, "missing-bibliography", `No bibliography hyperlink exists for: ${missing.join(", ")}.`, text, fragments));
-      unwrapHyperlink(item.element);
+      problems.push(makeProblem(problemKey, documentId ?? group.parsed.documentId, referenceIds, group.url, "missing-bibliography", `No bibliography hyperlink exists for: ${missing.join(", ")}.`, text, fragments));
+      for (const element of group.elements) unwrapHyperlink(element);
       continue;
     }
 
     if (referenceIds.length !== 1) {
       const rawSegments = splitRawCitationText(text, referenceIds.length);
       if (rawSegments.length === referenceIds.length) {
-        splitCitationHyperlink(item.element, rawSegments, referenceIds);
+        splitCitationHyperlinks(group.elements, rawSegments, referenceIds);
         internalLinks.push(...referenceIds.map((referenceId) => ({ referenceId })));
       } else {
-        problems.push(makeProblem(problemKey, documentId ?? item.parsed.documentId, referenceIds, item.url, "docx-multi-reference", "This DOCX hyperlink contains multiple Paperpile IDs, but its text did not split into the same number of citation segments.", text, fragments));
-        unwrapHyperlink(item.element);
+        problems.push(makeProblem(problemKey, documentId ?? group.parsed.documentId, referenceIds, group.url, "docx-multi-reference", "This DOCX hyperlink contains multiple Paperpile IDs, but its text did not split into the same number of citation segments.", text, fragments));
+        for (const element of group.elements) unwrapHyperlink(element);
       }
       continue;
     }
 
-    item.element.removeAttributeNS(REL_NS, "id");
-    item.element.setAttributeNS(WORD_NS, "w:anchor", bookmarkName(referenceIds[0]));
+    for (const element of group.elements) {
+      element.removeAttributeNS(REL_NS, "id");
+      element.setAttributeNS(WORD_NS, "w:anchor", bookmarkName(referenceIds[0]));
+    }
     internalLinks.push({ referenceId: referenceIds[0] });
   }
 
@@ -94,7 +99,7 @@ export async function processDocx(file: File, progress: (message: string) => voi
     internalLinks: internalLinks.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, referenceId: item.referenceId, destination: { referenceId: item.referenceId, pageIndex: -1, y: 0 } })),
     warnings: problems.map((problem) => ({ code: problem.code, severity: "warning", message: problem.message })),
     problems,
-    resolvedClusters: citationLinks.length - problems.length,
+    resolvedClusters: citationGroups.length - problems.length,
     unresolvedClusters: problems.length,
   };
 
@@ -108,6 +113,28 @@ function readRelationships(xml: string): Relationship[] {
     id: element.getAttribute("Id") ?? "",
     target: element.getAttribute("Target") ?? "",
   })).filter((relationship) => relationship.id && relationship.target);
+}
+
+function groupAdjacentCitationLinks(links: ParsedLink[]): CitationLinkGroup[] {
+  const groups: CitationLinkGroup[] = [];
+  for (const link of links) {
+    const previous = groups[groups.length - 1];
+    if (previous && previous.url === link.url && previous.element.parentNode === link.element.parentNode && areAdjacent(previous.elements[previous.elements.length - 1], link.element)) {
+      previous.elements.push(link.element);
+      continue;
+    }
+    groups.push({ ...link, elements: [link.element] });
+  }
+  return groups;
+}
+
+function areAdjacent(first: Element, second: Element): boolean {
+  let node = first.nextSibling;
+  while (node && node !== second) {
+    if (node.textContent?.trim()) return false;
+    node = node.nextSibling;
+  }
+  return node === second;
 }
 
 function unwrapHyperlink(element: Element, wrappers: Element[] = []): void {
@@ -136,7 +163,8 @@ function splitRawCitationText(text: string, expectedCount: number): string[] {
   return segments.length === expectedCount ? segments : [];
 }
 
-function splitCitationHyperlink(element: Element, segments: string[], referenceIds: string[]): void {
+function splitCitationHyperlinks(elements: Element[], segments: string[], referenceIds: string[]): void {
+  const element = elements[0];
   const parent = element.parentNode;
   const document = element.ownerDocument;
   if (!parent || !document) return;
@@ -161,7 +189,7 @@ function splitCitationHyperlink(element: Element, segments: string[], referenceI
     hyperlink.append(run);
     parent.insertBefore(hyperlink, element);
   }
-  parent.removeChild(element);
+  for (const original of elements) parent.removeChild(original);
 }
 
 function makeProblem(problemKey: string, documentId: string, referenceIds: string[], uri: string, code: string, message: string, evidenceText: string, fragments: Array<{ index: number; text: string; rect: PdfRect }>): CitationProblem {
