@@ -1,68 +1,49 @@
-# Jack Tierney - Personal Website
+# CitationLinker
 
-A minimal personal website for showcasing research, publications, and interactive bioinformatics visualizations.
+CitationLinker is a fully client-side web app for converting Paperpile-generated external DOCX citation links into internal DOCX navigation links.
 
-## Site Structure
+## What it does
 
-```
-├── index.html          # Home page with bio and overview
-├── research.html       # Publications and ongoing projects
-├── demos/              # Interactive visualizations
-│   ├── index.html      # Gallery of demos
-│   └── example-demo/   # Template for new demos
-├── assets/
-│   ├── css/
-│   │   └── style.css   # Main stylesheet
-│   └── img/
-│       └── jack.jpeg   # Profile photo
-```
+- Accepts a Paperpile DOCX by drag-and-drop or file picker.
+- Detects Paperpile citation and bibliography hyperlinks in the DOCX XML locally in the browser.
+- Maps Paperpile `/c/<doc>/<ids>` citations to matching `/b/<doc>/<id>` bibliography entries.
+- Rewrites bibliography hyperlinks as DOCX bookmarks and citation hyperlinks as internal DOCX anchors.
+- Preserves unrelated document content and hyperlinks.
+- Downloads a modified DOCX without uploading the manuscript anywhere.
 
-## Adding New Demos
+Semicolon-separated multi-reference citation hyperlinks are split into separate DOCX hyperlink runs when the text and Paperpile ID counts agree. Other multi-reference groups are reported for review rather than guessed.
 
-Each demo should be a standalone HTML page in its own directory under `demos/`:
+## Privacy
 
-1. Create a new directory: `demos/your-demo-name/`
-2. Add an `index.html` file with your visualization
-3. Include any necessary JavaScript libraries (D3.js, Three.js, etc.)
-4. Link to the demo from `demos/index.html`
-
-### Example Demo Structure
-
-```
-demos/
-└── ribosome-visualization/
-    ├── index.html
-    ├── script.js
-    ├── style.css
-    └── data/
-        └── sample-data.json
-```
-
-## Technologies
-
-- Pure HTML/CSS/JavaScript (no build system required)
-- Hosted on GitHub Pages
-- Designed for adding interactive visualizations using:
-  - D3.js for data visualization
-  - Three.js for 3D graphics
-
-## New Demo: Locus RDG (Splicing + Translation)
-
-The `demos/locus-rdg` tool loads a gene locus from Ensembl, builds a splice graph across all transcripts, and lets you select an event chain (a transcript) to visualize as a Ribosome Decision Graph (RDG).
-
-- Location: `demos/locus-rdg/index.html`
-- Workflow: Enter a gene symbol or Ensembl ID → fetch transcripts/exons (expand=1) → build splice graph → pick a transcript → assemble cDNA → derive RDG translons and render.
-- Shared modules:
-  - `demos/shared/locus-ensembl.js` (REST helpers)
-  - `demos/shared/locus-splice-graph.js` (splice graph + cDNA assembly)
-
-  - Canvas API for custom animations
+All processing happens in the browser. No manuscript content is uploaded or transmitted.
 
 ## Development
 
-Simply edit the HTML/CSS files and push to GitHub. The site will automatically update via GitHub Pages.
+```bash
+npm install
+npm run dev
+```
 
-## License
+## GitHub Pages
 
-Content: © 2024 Jack Tierney
-Code: MIT License (see LICENSE file)
+This repo is deployed as a static site. GitHub Pages should publish the `dist/` output produced by `npm run build`.
+
+The source `index.html` is a Vite entry point, so opening it directly via `file://` will fail. Use `npm run dev` locally, or view the deployed GitHub Pages site.
+
+## Build
+
+```bash
+npm run build
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+## Notes
+
+- Multi-reference citation clusters are handled conservatively.
+- Ambiguous clusters are reported rather than guessed.
+- The app is designed for GitHub Pages deployment as a static site.

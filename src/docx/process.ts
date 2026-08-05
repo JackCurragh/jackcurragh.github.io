@@ -1,0 +1,185 @@
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import type { CitationProblem, PdfRect, ProcessingReport } from "../model/types";
+import { normalizeCitationText, splitSemicolonCluster } from "../utils/strings";
+import { parsePaperpileUrl } from "../paperpile/urls";
+
+const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const PACKAGE_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
+const ZERO_RECT: PdfRect = { x1: 0, y1: 0, x2: 0, y2: 0 };
+
+type Relationship = { id: string; target: string };
+
+export interface DocxProcessResult {
+  report: ProcessingReport;
+  outputBytes: Uint8Array;
+}
+
+export async function processDocx(file: File, progress: (message: string) => void): Promise<DocxProcessResult> {
+  progress("Reading DOCX package locally…");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const archive = unzipSync(bytes);
+  const documentXml = requireEntry(archive, "word/document.xml");
+  const relsXml = requireEntry(archive, "word/_rels/document.xml.rels");
+  const document = parseXml(strFromU8(documentXml), "word/document.xml");
+  const relationships = readRelationships(strFromU8(relsXml));
+  const relationshipById = new Map(relationships.map((relationship) => [relationship.id, relationship.target]));
+  const hyperlinks = [...document.getElementsByTagNameNS(WORD_NS, "hyperlink")];
+  const citations = hyperlinks
+    .map((element) => ({ element, url: relationshipById.get(element.getAttributeNS(REL_NS, "id") ?? "") }))
+    .filter((item): item is { element: Element; url: string } => Boolean(item.url))
+    .map((item) => ({ ...item, parsed: parsePaperpileUrl(item.url) }))
+    .filter((item): item is { element: Element; url: string; parsed: NonNullable<ReturnType<typeof parsePaperpileUrl>> } => Boolean(item.parsed));
+
+  const bibliography = citations.filter((item) => item.parsed.kind === "bibliography");
+  const citationLinks = citations.filter((item) => item.parsed.kind === "citation");
+  const bibliographyIds = new Set(bibliography.map((item) => item.parsed.referenceIds[0]));
+  const documentId = citations[0]?.parsed.documentId;
+  const problems: CitationProblem[] = [];
+  const internalLinks: Array<{ referenceId: string }> = [];
+  let bookmarkId = 1;
+
+  progress("Indexing bibliography bookmarks…");
+  for (const item of bibliography) {
+    const referenceId = item.parsed.referenceIds[0];
+    const anchor = bookmarkName(referenceId);
+    const start = document.createElementNS(WORD_NS, "w:bookmarkStart");
+    start.setAttributeNS(WORD_NS, "w:id", String(bookmarkId));
+    start.setAttributeNS(WORD_NS, "w:name", anchor);
+    const end = document.createElementNS(WORD_NS, "w:bookmarkEnd");
+    end.setAttributeNS(WORD_NS, "w:id", String(bookmarkId));
+    bookmarkId += 1;
+    unwrapHyperlink(item.element, [start, end]);
+    internalLinks.push({ referenceId });
+  }
+
+  progress("Resolving Paperpile citation links…");
+  for (const item of citationLinks) {
+    const referenceIds = item.parsed.referenceIds;
+    const missing = referenceIds.filter((referenceId) => !bibliographyIds.has(referenceId));
+    const text = normalizeCitationText(item.element.textContent ?? "");
+    const fragments = splitCitationText(text);
+    const problemKey = `docx::${item.url}`;
+
+    if (missing.length > 0) {
+      problems.push(makeProblem(problemKey, documentId ?? item.parsed.documentId, referenceIds, item.url, "missing-bibliography", `No bibliography hyperlink exists for: ${missing.join(", ")}.`, text, fragments));
+      unwrapHyperlink(item.element);
+      continue;
+    }
+
+    if (referenceIds.length !== 1) {
+      const rawSegments = splitRawCitationText(text, referenceIds.length);
+      if (rawSegments.length === referenceIds.length) {
+        splitCitationHyperlink(item.element, rawSegments, referenceIds);
+        internalLinks.push(...referenceIds.map((referenceId) => ({ referenceId })));
+      } else {
+        problems.push(makeProblem(problemKey, documentId ?? item.parsed.documentId, referenceIds, item.url, "docx-multi-reference", "This DOCX hyperlink contains multiple Paperpile IDs, but its text did not split into the same number of citation segments.", text, fragments));
+        unwrapHyperlink(item.element);
+      }
+      continue;
+    }
+
+    item.element.removeAttributeNS(REL_NS, "id");
+    item.element.setAttributeNS(WORD_NS, "w:anchor", bookmarkName(referenceIds[0]));
+    internalLinks.push({ referenceId: referenceIds[0] });
+  }
+
+  const outputXml = new XMLSerializer().serializeToString(document);
+  const outputArchive = { ...archive, "word/document.xml": strToU8(outputXml) };
+  const report: ProcessingReport = {
+    format: "docx",
+    citationAnnotations: citationLinks.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, documentId: item.parsed.documentId, referenceIds: item.parsed.referenceIds, uri: item.url })),
+    bibliographyAnnotations: bibliography.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, documentId: item.parsed.documentId, referenceId: item.parsed.referenceIds[0], uri: item.url })),
+    bibliographyDestinations: bibliography.map((item) => ({ referenceId: item.parsed.referenceIds[0], pageIndex: -1, y: 0 })),
+    internalLinks: internalLinks.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, referenceId: item.referenceId, destination: { referenceId: item.referenceId, pageIndex: -1, y: 0 } })),
+    warnings: problems.map((problem) => ({ code: problem.code, severity: "warning", message: problem.message })),
+    problems,
+    resolvedClusters: citationLinks.length - problems.length,
+    unresolvedClusters: problems.length,
+  };
+
+  progress("Building rewritten DOCX…");
+  return { report, outputBytes: zipSync(outputArchive) };
+}
+
+function readRelationships(xml: string): Relationship[] {
+  const document = parseXml(xml, "word/_rels/document.xml.rels");
+  return [...document.getElementsByTagNameNS(PACKAGE_REL_NS, "Relationship")].map((element) => ({
+    id: element.getAttribute("Id") ?? "",
+    target: element.getAttribute("Target") ?? "",
+  })).filter((relationship) => relationship.id && relationship.target);
+}
+
+function unwrapHyperlink(element: Element, wrappers: Element[] = []): void {
+  const parent = element.parentNode;
+  if (!parent) return;
+  const fragment = element.ownerDocument!.createDocumentFragment();
+  for (const wrapper of wrappers) fragment.append(wrapper);
+  while (element.firstChild) fragment.append(element.firstChild);
+  for (const child of [...fragment.childNodes]) parent.insertBefore(child, element);
+  parent.removeChild(element);
+}
+
+function splitCitationText(text: string): Array<{ index: number; text: string; rect: PdfRect }> {
+  return splitSemicolonCluster(text).map((segment, index) => ({ index, text: segment, rect: ZERO_RECT }));
+}
+
+function splitRawCitationText(text: string, expectedCount: number): string[] {
+  const segments: string[] = [];
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] !== ";") continue;
+    segments.push(text.slice(start, index + 1));
+    start = index + 1;
+  }
+  if (start < text.length) segments.push(text.slice(start));
+  return segments.length === expectedCount ? segments : [];
+}
+
+function splitCitationHyperlink(element: Element, segments: string[], referenceIds: string[]): void {
+  const parent = element.parentNode;
+  const document = element.ownerDocument;
+  if (!parent || !document) return;
+  const runs = [...element.getElementsByTagNameNS(WORD_NS, "r")];
+  const template = runs[0]?.cloneNode(true) as Element | undefined;
+  if (!template) return;
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const hyperlink = element.cloneNode(false) as Element;
+    hyperlink.removeAttributeNS(REL_NS, "id");
+    hyperlink.setAttributeNS(WORD_NS, "w:anchor", bookmarkName(referenceIds[index]));
+    const run = template.cloneNode(true) as Element;
+    const textNodes = [...run.getElementsByTagNameNS(WORD_NS, "t")];
+    if (textNodes.length === 0) {
+      const textNode = document.createElementNS(WORD_NS, "w:t");
+      run.append(textNode);
+      textNodes.push(textNode);
+    }
+    textNodes[0].textContent = segments[index];
+    for (const extraTextNode of textNodes.slice(1)) extraTextNode.remove();
+    if (/^\s|\s$/.test(segments[index])) textNodes[0].setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+    hyperlink.append(run);
+    parent.insertBefore(hyperlink, element);
+  }
+  parent.removeChild(element);
+}
+
+function makeProblem(problemKey: string, documentId: string, referenceIds: string[], uri: string, code: string, message: string, evidenceText: string, fragments: Array<{ index: number; text: string; rect: PdfRect }>): CitationProblem {
+  return { code, problemKey, pageIndex: -1, documentId, referenceIds, uri, message, evidenceText, annotationRects: [], fragments };
+}
+
+function bookmarkName(referenceId: string): string {
+  return `citation-${referenceId.replace(/[^A-Za-z0-9_.-]/g, "-")}`;
+}
+
+function requireEntry(archive: Record<string, Uint8Array>, path: string): Uint8Array {
+  const entry = archive[path];
+  if (!entry) throw new Error(`The DOCX package is missing ${path}.`);
+  return entry;
+}
+
+function parseXml(xml: string, source: string): XMLDocument {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  if (document.querySelector("parsererror")) throw new Error(`Could not parse ${source}.`);
+  return document;
+}
