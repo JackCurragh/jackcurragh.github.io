@@ -11,6 +11,7 @@ const ZERO_RECT: PdfRect = { x1: 0, y1: 0, x2: 0, y2: 0 };
 type Relationship = { id: string; target: string };
 type ParsedLink = { element: Element; url: string; parsed: NonNullable<ReturnType<typeof parsePaperpileUrl>> };
 type CitationLinkGroup = ParsedLink & { elements: Element[] };
+type FigureTarget = { key: string; anchor: string; paragraph: Element };
 
 export interface DocxProcessResult {
   report: ProcessingReport;
@@ -40,7 +41,11 @@ export async function processDocx(file: File, progress: (message: string) => voi
   const documentId = citations[0]?.parsed.documentId;
   const problems: CitationProblem[] = [];
   const internalLinks: Array<{ referenceId: string }> = [];
-  let bookmarkId = 1;
+  let bookmarkId = nextBookmarkId(document);
+
+  progress("Indexing figure and box captions…");
+  const figureTargets = addFigureBookmarks(document, bookmarkId);
+  bookmarkId += figureTargets.length;
 
   progress("Indexing bibliography bookmarks…");
   for (const item of bibliography) {
@@ -89,6 +94,13 @@ export async function processDocx(file: File, progress: (message: string) => voi
     internalLinks.push({ referenceId: referenceIds[0] });
   }
 
+  const figureLinkResult = linkFigureReferences(document, figureTargets);
+  const figureWarnings = figureLinkResult.warnings.map((warning) => ({
+    code: "missing-figure-target",
+    severity: "warning" as const,
+    message: warning.message,
+  }));
+
   const outputXml = new XMLSerializer().serializeToString(document);
   const outputArchive = { ...archive, "word/document.xml": strToU8(outputXml) };
   const report: ProcessingReport = {
@@ -97,14 +109,28 @@ export async function processDocx(file: File, progress: (message: string) => voi
     bibliographyAnnotations: bibliography.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, documentId: item.parsed.documentId, referenceId: item.parsed.referenceIds[0], uri: item.url })),
     bibliographyDestinations: bibliography.map((item) => ({ referenceId: item.parsed.referenceIds[0], pageIndex: -1, y: 0 })),
     internalLinks: internalLinks.map((item) => ({ pageIndex: -1, rect: ZERO_RECT, referenceId: item.referenceId, destination: { referenceId: item.referenceId, pageIndex: -1, y: 0 } })),
-    warnings: problems.map((problem) => ({ code: problem.code, severity: "warning", message: problem.message })),
+    warnings: [
+      ...problems.map((problem) => ({ code: problem.code, severity: "warning" as const, message: problem.message })),
+      ...figureWarnings,
+    ],
     problems,
     resolvedClusters: citationGroups.length - problems.length,
     unresolvedClusters: problems.length,
+    figureTargets: figureTargets.map((target) => target.key),
+    figureLinksCreated: figureLinkResult.linksCreated,
   };
 
   progress("Building rewritten DOCX…");
   return { report, outputBytes: zipSync(outputArchive) };
+}
+
+function nextBookmarkId(document: XMLDocument): number {
+  let maximum = 0;
+  for (const bookmark of [...document.getElementsByTagNameNS(WORD_NS, "bookmarkStart")]) {
+    const id = Number.parseInt(bookmark.getAttributeNS(WORD_NS, "id") ?? "", 10);
+    if (Number.isFinite(id)) maximum = Math.max(maximum, id);
+  }
+  return maximum + 1;
 }
 
 function readRelationships(xml: string): Relationship[] {
@@ -113,6 +139,100 @@ function readRelationships(xml: string): Relationship[] {
     id: element.getAttribute("Id") ?? "",
     target: element.getAttribute("Target") ?? "",
   })).filter((relationship) => relationship.id && relationship.target);
+}
+
+function addFigureBookmarks(document: XMLDocument, firstBookmarkId: number): FigureTarget[] {
+  const targets: FigureTarget[] = [];
+  let bookmarkId = firstBookmarkId;
+  for (const paragraph of [...document.getElementsByTagNameNS(WORD_NS, "p")]) {
+    const key = captionKey(paragraph.textContent ?? "");
+    if (!key || targets.some((target) => target.key === key)) continue;
+    const anchor = key;
+    const start = document.createElementNS(WORD_NS, "w:bookmarkStart");
+    start.setAttributeNS(WORD_NS, "w:id", String(bookmarkId));
+    start.setAttributeNS(WORD_NS, "w:name", anchor);
+    const end = document.createElementNS(WORD_NS, "w:bookmarkEnd");
+    end.setAttributeNS(WORD_NS, "w:id", String(bookmarkId));
+    bookmarkId += 1;
+
+    const firstContent = [...paragraph.childNodes].find((node) => node.nodeType === 1 && (node as Element).localName !== "pPr");
+    paragraph.insertBefore(start, firstContent ?? null);
+    paragraph.append(end);
+    targets.push({ key, anchor, paragraph });
+  }
+  return targets;
+}
+
+function linkFigureReferences(document: XMLDocument, targets: FigureTarget[]): { linksCreated: number; warnings: Array<{ key: string; text: string; message: string }> } {
+  const targetByKey = new Map(targets.map((target) => [target.key, target]));
+  const captionParagraphs = new Set(targets.map((target) => target.paragraph));
+  const warnings: Array<{ key: string; text: string; message: string }> = [];
+  let linksCreated = 0;
+
+  for (const paragraph of [...document.getElementsByTagNameNS(WORD_NS, "p")]) {
+    if (captionParagraphs.has(paragraph)) continue;
+    for (const run of [...paragraph.getElementsByTagNameNS(WORD_NS, "r")]) {
+      if (hasHyperlinkAncestor(run)) continue;
+      const textNodes = [...run.getElementsByTagNameNS(WORD_NS, "t")];
+      if (textNodes.length !== 1) continue;
+      const text = textNodes[0].textContent ?? "";
+      const matches = [...text.matchAll(/\b(Fig(?:ure)?\.?|Box)\s+(\d+)([a-z])?\b/gi)];
+      if (matches.length === 0) continue;
+
+      const parent = run.parentNode;
+      if (!parent) continue;
+      let cursor = 0;
+      for (const match of matches) {
+        const before = text.slice(cursor, match.index);
+        if (before) parent.insertBefore(cloneRunWithText(run, before), run);
+        const key = `${match[1].toLowerCase().startsWith("box") ? "box" : "figure"}-${match[2]}`;
+        const target = targetByKey.get(key);
+        const matchedText = match[0];
+        if (target) {
+          const hyperlink = document.createElementNS(WORD_NS, "w:hyperlink");
+          hyperlink.setAttributeNS(WORD_NS, "w:anchor", target.anchor);
+          hyperlink.setAttributeNS(WORD_NS, "w:history", "1");
+          hyperlink.append(cloneRunWithText(run, matchedText));
+          parent.insertBefore(hyperlink, run);
+          linksCreated += 1;
+        } else {
+          parent.insertBefore(cloneRunWithText(run, matchedText), run);
+          warnings.push({ key: `docx::${key}`, text: matchedText, message: `No ${key.startsWith("box") ? "box" : "figure"} caption was found for ${matchedText}.` });
+        }
+        cursor = (match.index ?? 0) + matchedText.length;
+      }
+      const after = text.slice(cursor);
+      if (after) parent.insertBefore(cloneRunWithText(run, after), run);
+      parent.removeChild(run);
+    }
+  }
+  return { linksCreated, warnings };
+}
+
+function captionKey(text: string): string | undefined {
+  const match = text.match(/^\s*(Figure|Fig\.?|Box)\s+(\d+)(?:[a-z])?\b/i);
+  if (!match) return undefined;
+  return `${match[1].toLowerCase().startsWith("box") ? "box" : "figure"}-${match[2]}`;
+}
+
+function hasHyperlinkAncestor(element: Element): boolean {
+  let parent = element.parentElement;
+  while (parent) {
+    if (parent.localName === "hyperlink") return true;
+    parent = parent.parentElement;
+  }
+  return false;
+}
+
+function cloneRunWithText(run: Element, text: string): Element {
+  const clone = run.ownerDocument!.createElementNS(WORD_NS, "w:r");
+  const properties = run.getElementsByTagNameNS(WORD_NS, "rPr")[0];
+  if (properties) clone.append(properties.cloneNode(true));
+  const textNode = run.ownerDocument!.createElementNS(WORD_NS, "w:t");
+  textNode.textContent = text;
+  if (/^\s|\s$/.test(text)) textNode.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+  clone.append(textNode);
+  return clone;
 }
 
 function groupAdjacentCitationLinks(links: ParsedLink[]): CitationLinkGroup[] {

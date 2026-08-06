@@ -87,4 +87,6 @@ export interface ProcessingReport {
   problems: CitationProblem[];
   resolvedClusters: number;
   unresolvedClusters: number;
+  figureTargets: string[];
+  figureLinksCreated: number;
 }

@@ -58,4 +58,32 @@ describe("processDocx", () => {
     expect(result.report.internalLinks).toHaveLength(4);
     expect(output.match(/w:anchor="citation-ref[12]"/g)).toHaveLength(2);
   });
+
+  it("links figure and box references to their captions", async () => {
+    const figureDocument = `<?xml version="1.0" encoding="UTF-8"?>
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p><w:r><w:t>Figure 1. Experimental setup</w:t></w:r></w:p>
+          <w:p><w:r><w:t>See Fig. 1 and Box 2 for details.</w:t></w:r></w:p>
+          <w:p><w:r><w:t>Box 2. Analysis notes</w:t></w:r></w:p>
+        </w:body>
+      </w:document>`;
+    const emptyRelationships = `<?xml version="1.0" encoding="UTF-8"?>
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`;
+    const bytes = zipSync({
+      "word/document.xml": strToU8(figureDocument),
+      "word/_rels/document.xml.rels": strToU8(emptyRelationships),
+    });
+
+    const result = await processDocx({ arrayBuffer: async () => bytes.buffer } as unknown as File, () => undefined);
+    const output = strFromU8(unzipSync(result.outputBytes)["word/document.xml"]);
+
+    expect(result.report.problems).toHaveLength(0);
+    expect(result.report.figureTargets).toEqual(["figure-1", "box-2"]);
+    expect(result.report.figureLinksCreated).toBe(2);
+    expect(output).toContain('w:name="figure-1"');
+    expect(output).toContain('w:name="box-2"');
+    expect(output).toContain('w:anchor="figure-1"');
+    expect(output).toContain('w:anchor="box-2"');
+  });
 });

@@ -12,6 +12,8 @@ export function summarizeProcessing(report: ProcessingReport): string {
     `Resolved citation clusters: ${report.resolvedClusters}`,
     `Ambiguous citation clusters: ${report.unresolvedClusters}`,
     `Internal DOCX links created: ${report.internalLinks.length}`,
+    `Figure and box targets: ${report.figureTargets.length}`,
+    `Figure and box links created: ${report.figureLinksCreated}`,
   ];
 
   if (report.warnings.length > 0) lines.push(`Warnings: ${report.warnings.length}`);
